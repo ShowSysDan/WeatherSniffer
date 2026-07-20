@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if rule else 'New' }} rule — WeatherSniffer{% endblock %}
+{% block content %}
+<h1>{{ 'Edit rule' if rule else 'New rule' }}</h1>
+
+{% set f = form or {} %}
+{% set cfg = rule.action_config if rule else {} %}
+<form class="stack" method="post">
+  <label for="name">Name</label>
+  <input type="text" id="name" name="name" required
+         value="{{ f.get('name', rule.name if rule else '') }}"
+         placeholder="e.g. Lightning delay active → notify Q-SYS">
+
+  <label for="source_id">Source</label>
+  <select id="source_id" name="source_id">
+    {% for s in sources %}
+    <option value="{{ s.id }}" {% if f.get('source_id', rule.source_id if rule else '')|string == s.id|string %}selected{% endif %}>{{ s.name }} ({{ s.slug }})</option>
+    {% endfor %}
+  </select>
+  {% if not sources %}<p class="help status-error">No sources exist yet — add one first.</p>{% endif %}
+
+  <label for="metric_key">Metric</label>
+  <select id="metric_key" name="metric_key" data-current="{{ f.get('metric_key', rule.metric_key if rule else '') }}"></select>
+  <p class="help">Populated from metrics discovered on the selected source. If it's empty, run a
+     <strong>Test fetch</strong> on the source first (or wait for a poll).</p>
+
+  <label for="trigger_mode">Trigger mode</label>
+  <select id="trigger_mode" name="trigger_mode">
+    {% set tm = f.get('trigger_mode', rule.trigger_mode if rule else 'threshold') %}
+    <option value="threshold" {% if tm == 'threshold' %}selected{% endif %}>Threshold — fire when the metric crosses a value</option>
+    <option value="on_change" {% if tm == 'on_change' %}selected{% endif %}>On change — fire whenever the value moves</option>
+    <option value="every_tick" {% if tm == 'every_tick' %}selected{% endif %}>Every tick — fire on every poll (continuous streaming)</option>
+  </select>
+
+  <div id="threshold-fields">
+    <div class="form-row">
+      <div>
+        <label for="operator">Operator</label>
+        <select id="operator" name="operator">
+          {% set op = f.get('operator', rule.operator if rule else 'gt') %}
+          {% for o, label in [('gt','> greater than'), ('gte','>= at least'), ('lt','< less than'),
+                              ('lte','<= at most'), ('eq','== equals'), ('ne','!= not equal'),
+                              ('is_true','is true'), ('is_false','is false')] %}
+          <option value="{{ o }}" {% if op == o %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="threshold_num">Threshold (number)</label>
+        <input type="text" id="threshold_num" name="threshold_num"
+               value="{{ f.get('threshold_num', ('%g' % rule.threshold_num) if rule and rule.threshold_num is not none else '') }}">
+      </div>
+      <div>
+        <label for="threshold_text">Threshold (text, for ==/≠ on text metrics)</label>
+        <input type="text" id="threshold_text" name="threshold_text"
+               value="{{ f.get('threshold_text', rule.threshold_text if rule else '') or '' }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label for="hysteresis">Hysteresis (deadband)</label>
+        <input type="text" id="hysteresis" name="hysteresis"
+               value="{{ f.get('hysteresis', ('%g' % rule.hysteresis) if rule and rule.hysteresis is not none else '') }}">
+        <p class="help">Re-arm only after the value leaves threshold ± this. Stops flapping near the boundary.</p>
+      </div>
+      <div class="check" style="align-items:flex-end">
+        <input type="checkbox" id="fire_on_clear" name="fire_on_clear"
+               {% if f.get('fire_on_clear', 'on' if (rule.fire_on_clear if rule else False) else '') == 'on' %}checked{% endif %}>
+        <label for="fire_on_clear">Fire on clear (also fire when the condition returns to false)</label>
+      </div>
+    </div>
+  </div>
+
+  <div id="onchange-fields">
+    <label for="min_change">Min change (ignore smaller moves)</label>
+    <input type="text" id="min_change" name="min_change"
+           value="{{ f.get('min_change', ('%g' % rule.min_change) if rule and rule.min_change is not none else '') }}">
+  </div>
+
+  <div id="cooldown-field">
+    <label for="cooldown_seconds">Cooldown (seconds; 0 = none)</label>
+    <input type="number" id="cooldown_seconds" name="cooldown_seconds" min="0"
+           value="{{ f.get('cooldown_seconds', rule.cooldown_seconds if rule else 0) }}">
+  </div>
+
+  <label for="action_type">Action</label>
+  <select id="action_type" name="action_type">
+    {% set at = f.get('action_type', rule.action_type if rule else 'webhook_http') %}
+    <option value="webhook_http" {% if at == 'webhook_http' %}selected{% endif %}>HTTP webhook</option>
+    <option value="tcp" {% if at == 'tcp' %}selected{% endif %}>TCP send</option>
+    <option value="udp" {% if at == 'udp' %}selected{% endif %}>UDP datagram</option>
+    <option value="spot_reading" {% if at == 'spot_reading' %}selected{% endif %}>Send to Spot (reading)</option>
+    <option value="spot_event" {% if at == 'spot_event' %}selected{% endif %}>Spot event marker</option>
+  </select>
+
+  <div class="panel" id="action-config" style="margin-top:0.8rem">
+    <div data-action="webhook_http">
+      <div class="form-row">
+        <div style="flex:0 0 120px">
+          <label for="cfg_method">Method</label>
+          <select id="cfg_method" name="cfg_method">
+            {% set method = f.get('cfg_method', cfg.get('method', 'POST')) %}
+            {% for m in ['POST', 'GET', 'PUT', 'PATCH'] %}
+            <option {% if method == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="cfg_url">URL</label>
+          <input type="text" id="cfg_url" name="cfg_url" class="mono"
+                 value="{{ f.get('cfg_url', cfg.get('url', '')) }}" placeholder="https://host/hook">
+        </div>
+      </div>
+      <label for="cfg_headers">Headers (JSON object, optional)</label>
+      <textarea id="cfg_headers" name="cfg_headers" placeholder='{"X-Token": "abc"}'>{{ f.get('cfg_headers', cfg.get('headers') | tojson if cfg.get('headers') else '') }}</textarea>
+      <label for="cfg_body_template">Body template</label>
+      <input type="text" id="cfg_body_template" name="cfg_body_template" class="mono"
+             value="{{ f.get('cfg_body_template', cfg.get('body_template', '')) }}" placeholder='{value}  or  {"wbgt": {value}}'>
+    </div>
+
+    <div data-action="tcp udp">
+      <div class="form-row">
+        <div>
+          <label for="cfg_host">Host</label>
+          <input type="text" id="cfg_host" name="cfg_host" class="mono"
+                 value="{{ f.get('cfg_host', cfg.get('host', '')) }}">
+        </div>
+        <div style="flex:0 0 120px">
+          <label for="cfg_port">Port</label>
+          <input type="number" id="cfg_port" name="cfg_port" min="1" max="65535"
+                 value="{{ f.get('cfg_port', cfg.get('port', '')) }}">
+        </div>
+      </div>
+      <label for="cfg_payload_template">Payload template</label>
+      <input type="text" id="cfg_payload_template" name="cfg_payload_template" class="mono"
+             value="{{ f.get('cfg_payload_template', cfg.get('payload_template', '')) }}" placeholder="{value}">
+      <div class="check" data-action="tcp">
+        <input type="checkbox" id="cfg_append_newline" name="cfg_append_newline"
+               {% if f.get('cfg_append_newline', 'on' if cfg.get('append_newline', True) else '') == 'on' %}checked{% endif %}>
+        <label for="cfg_append_newline">Append newline (Spot's TCP monitors expect newline-terminated lines)</label>
+      </div>
+    </div>
+
+    <div data-action="spot_reading spot_event">
+      <label for="cfg_base_url">Spot base URL</label>
+      <input type="text" id="cfg_base_url" name="cfg_base_url" class="mono"
+             value="{{ f.get('cfg_base_url', cfg.get('base_url', '')) }}" placeholder="http://spot-host:6100 (blank = Settings default)">
+      <label for="cfg_token">Spot monitor token</label>
+      <input type="text" id="cfg_token" name="cfg_token" class="mono"
+             value="{{ f.get('cfg_token', cfg.get('token', '')) }}">
+      <div data-action="spot_reading">
+        <label for="cfg_value_metric_key">Value metric (blank = this rule's metric)</label>
+        <input type="text" id="cfg_value_metric_key" name="cfg_value_metric_key" class="mono"
+               value="{{ f.get('cfg_value_metric_key', cfg.get('value_metric_key', '') or '') }}">
+      </div>
+      <label for="cfg_label_template">Label template {% if rule and rule.action_type == 'spot_reading' %}(optional){% endif %}</label>
+      <input type="text" id="cfg_label_template" name="cfg_label_template" class="mono"
+             value="{{ f.get('cfg_label_template', cfg.get('label_template', '') or '') }}"
+             placeholder="Lightning hold ({value} min)">
+    </div>
+
+    <p class="help">Templates accept <code>{value}</code>, <code>{value:.1f}</code>, <code>{metric_key}</code>,
+       <code>{source_name}</code>, <code>{unit}</code>, <code>{observed_at}</code>, <code>{now}</code>.
+       Blank templates default to <code>{value}</code>.</p>
+  </div>
+
+  <div class="check">
+    <input type="checkbox" id="enabled" name="enabled"
+           {% if f.get('enabled', 'on' if (rule.enabled if rule else True) else '') == 'on' %}checked{% endif %}>
+    <label for="enabled">Enabled</label>
+  </div>
+
+  <div class="btn-row">
+    <button class="primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('main.rules') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* Metric dropdown: populated from discovered metrics_current rows per source. */
+async function loadMetricKeys() {
+  const sourceId = document.getElementById('source_id').value;
+  const sel = document.getElementById('metric_key');
+  const current = sel.dataset.current;
+  sel.innerHTML = '';
+  if (!sourceId) return;
+  try {
+    const resp = await fetch('/api/sources/' + sourceId + '/metric_keys');
+    const data = await resp.json();
+    let keys = data.metric_keys || [];
+    if (current && !keys.includes(current)) keys = [current].concat(keys);
+    for (const k of keys) {
+      const opt = document.createElement('option');
+      opt.value = k; opt.textContent = k;
+      if (k === current) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  } catch (e) { /* leave empty */ }
+}
+
+function syncTriggerFields() {
+  const mode = document.getElementById('trigger_mode').value;
+  document.getElementById('threshold-fields').style.display = (mode === 'threshold') ? '' : 'none';
+  document.getElementById('onchange-fields').style.display = (mode === 'on_change') ? '' : 'none';
+  document.getElementById('cooldown-field').style.display = (mode === 'every_tick') ? 'none' : '';
+}
+
+function syncActionFields() {
+  const type = document.getElementById('action_type').value;
+  document.querySelectorAll('#action-config [data-action]').forEach(el => {
+    el.style.display = el.dataset.action.split(' ').includes(type) ? '' : 'none';
+  });
+}
+
+document.getElementById('source_id').addEventListener('change', loadMetricKeys);
+document.getElementById('trigger_mode').addEventListener('change', syncTriggerFields);
+document.getElementById('action_type').addEventListener('change', syncActionFields);
+loadMetricKeys();
+syncTriggerFields();
+syncActionFields();
+</script>
+{% endblock %}

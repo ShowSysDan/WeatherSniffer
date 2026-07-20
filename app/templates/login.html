@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Sign in — WeatherSniffer{% endblock %}
+{% block content %}
+<div class="login-box panel">
+  <div class="brand">WeatherSniffer</div>
+  <form method="post">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autofocus autocomplete="username">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" autocomplete="current-password">
+    <div class="btn-row">
+      <button class="primary" style="width:100%" type="submit">Sign in</button>
+    </div>
+  </form>
+  <p class="help" style="margin-top:1rem">One login for the whole app family — signing in here signs you in everywhere.</p>
+</div>
+{% endblock %}

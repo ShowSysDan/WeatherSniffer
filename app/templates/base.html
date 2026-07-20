@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}WeatherSniffer{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="brand" href="{{ url_for('main.index') }}">WeatherSniffer
+    <small>Perry Weather → actions</small>
+    <small>v{{ ws_version }}</small>
+  </a>
+  <div class="navlinks">
+    <a href="{{ url_for('main.index') }}" class="{% if request.endpoint == 'main.index' %}active{% endif %}">Dashboard</a>
+    <a href="{{ url_for('main.sources') }}" class="{% if 'source' in (request.endpoint or '') %}active{% endif %}">Sources</a>
+    <a href="{{ url_for('main.rules') }}" class="{% if 'rule' in (request.endpoint or '') %}active{% endif %}">Rules</a>
+    <a href="{{ url_for('main.action_log') }}" class="{% if 'log' in (request.endpoint or '') %}active{% endif %}">Action Log</a>
+    {% if is_admin %}
+    <a href="{{ url_for('main.settings') }}" class="{% if request.endpoint == 'main.settings' %}active{% endif %}">Settings</a>
+    {% endif %}
+  </div>
+  {% if auth_enabled and current_user.get('username') %}
+  <span class="user">
+    {{ current_user.get('display_name') or current_user.get('username') }}
+    {% if is_admin %}<span class="admin-badge">ADMIN</span>{% endif %}
+    · <a href="{{ url_for('auth.logout') }}">Sign out</a>
+  </span>
+  {% endif %}
+</nav>
+
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+    <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

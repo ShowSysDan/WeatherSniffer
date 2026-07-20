@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Sources — WeatherSniffer{% endblock %}
+{% block content %}
+<h1>Sources</h1>
+{% if is_admin %}
+<p><a class="btn primary" href="{{ url_for('main.source_new') }}">＋ New source</a></p>
+{% else %}
+<p class="muted">Sources are managed by administrators.</p>
+{% endif %}
+
+<div class="panel table-wrap">
+<table>
+  <thead>
+    <tr><th>Name</th><th>Slug</th><th>Type</th><th>GUID / URL</th><th>Interval</th>
+        <th>Last poll</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for s in sources %}
+  <tr>
+    <td>{% if is_admin %}<a href="{{ url_for('main.source_edit', source_id=s.id) }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
+    <td class="mono">{{ s.slug }}</td>
+    <td>{{ s.source_type }}</td>
+    <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.url or s.guid or '—' }}</td>
+    <td>{{ s.poll_interval_seconds }}s</td>
+    <td class="mono">{{ s.last_polled_at | localtime }}</td>
+    <td>
+      <span class="badge {{ 'on' if s.enabled else 'off' }}">{{ 'enabled' if s.enabled else 'disabled' }}</span>
+      {% if s.last_status == 'error' %}<span class="badge fail" title="{{ s.last_error }}">error</span>
+      {% elif s.last_status == 'ok' %}<span class="badge on">ok</span>{% endif %}
+    </td>
+    <td style="white-space:nowrap">
+      {% if is_admin %}
+      <button class="small" onclick="testFetch({{ s.id }})">Test fetch</button>
+      <form class="inline" method="post" action="{{ url_for('main.source_toggle', source_id=s.id) }}">
+        <button class="small">{{ 'Disable' if s.enabled else 'Enable' }}</button>
+      </form>
+      <form class="inline" method="post" action="{{ url_for('main.source_delete', source_id=s.id) }}"
+            onsubmit="return confirm('Delete source “{{ s.name }}” and all its metrics, history and rules?')">
+        <button class="small danger">Delete</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8" class="muted">No sources configured.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<pre id="test-output" class="output" style="display:none"></pre>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function testFetch(id) {
+  const out = document.getElementById('test-output');
+  wsShowOutput(out, 'Fetching…');
+  const { data } = await wsPostJSON('/api/sources/test_fetch', { id: id });
+  if (data.ok) {
+    wsShowOutput(out, 'OK — discovered metric keys:\n  '
+      + data.metric_keys.join('\n  ') + '\n\nRaw response:\n' + data.raw);
+  } else {
+    wsShowOutput(out, 'FETCH FAILED: ' + (data.error || 'unknown error'));
+  }
+}
+</script>
+{% endblock %}
