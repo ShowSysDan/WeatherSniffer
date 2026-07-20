@@ -1,0 +1,42 @@
+# Reference systemd unit for WeatherSniffer.
+# install.sh writes the real unit to /etc/systemd/system/weathersniffer.service
+# with your paths/ports substituted — this file documents the shape.
+
+[Unit]
+Description=WeatherSniffer - Perry Weather poller, rules engine & actions
+Documentation=https://github.com/ShowSysDan/WeatherSniffer
+After=network.target postgresql.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=weathersniffer
+Group=weathersniffer
+
+WorkingDirectory=/opt/WeatherSniffer
+
+# SINGLE process on purpose: the APScheduler poller, rules/actions engine and
+# retention janitor live in-process. Exactly one gunicorn worker — more
+# workers would fire every job N times.
+Environment=TZ=America/New_York
+Environment=WEB_HOST=0.0.0.0
+Environment=WEB_PORT=7170
+ExecStart=/opt/WeatherSniffer/.venv/bin/gunicorn wsgi:app \
+    --workers 1 \
+    --threads 4 \
+    --bind 0.0.0.0:7170 \
+    --timeout 120
+
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=weathersniffer
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/WeatherSniffer
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

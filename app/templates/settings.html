@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Settings — WeatherSniffer{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<p class="muted">Operational knobs live here and apply immediately. Infrastructure
+(DB DSN, secret key, bind host/port, API key) stays in <code>.env</code>.</p>
+
+<form class="stack" method="post">
+  <h2>Syslog</h2>
+  <div class="check">
+    <input type="checkbox" id="syslog_local_enabled" name="syslog_local_enabled" {% if settings.syslog_local_enabled %}checked{% endif %}>
+    <label for="syslog_local_enabled">Local syslog enabled</label>
+  </div>
+  <label for="syslog_local_address">Local syslog socket</label>
+  <input type="text" id="syslog_local_address" name="syslog_local_address" class="mono"
+         value="{{ settings.syslog_local_address }}">
+  <p class="help">Auto-falls back to /dev/log (Linux) or /var/run/syslog (macOS) if this path doesn't exist.</p>
+
+  <div class="check">
+    <input type="checkbox" id="syslog_remote_enabled" name="syslog_remote_enabled" {% if settings.syslog_remote_enabled %}checked{% endif %}>
+    <label for="syslog_remote_enabled">Remote syslog enabled (e.g. FetchLog)</label>
+  </div>
+  <div class="form-row">
+    <div>
+      <label for="syslog_remote_host">Remote host</label>
+      <input type="text" id="syslog_remote_host" name="syslog_remote_host" class="mono"
+             value="{{ settings.syslog_remote_host or '' }}">
+    </div>
+    <div style="flex:0 0 130px">
+      <label for="syslog_remote_port">Port</label>
+      <input type="number" id="syslog_remote_port" name="syslog_remote_port"
+             value="{{ settings.syslog_remote_port }}">
+    </div>
+    <div style="flex:0 0 130px">
+      <label for="syslog_facility">Facility</label>
+      <select id="syslog_facility" name="syslog_facility">
+        {% for fac in ['local0','local1','local2','local3','local4','local5','local6','local7','user','daemon'] %}
+        <option {% if settings.syslog_facility == fac %}selected{% endif %}>{{ fac }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <h2>Polling &amp; retention</h2>
+  <div class="form-row">
+    <div>
+      <label for="default_poll_interval_seconds">Default poll interval (seconds)</label>
+      <input type="number" id="default_poll_interval_seconds" name="default_poll_interval_seconds" min="5"
+             value="{{ settings.default_poll_interval_seconds }}">
+    </div>
+    <div>
+      <label for="default_retention_days">Retention (days; blank = keep forever)</label>
+      <input type="text" id="default_retention_days" name="default_retention_days"
+             value="{{ settings.default_retention_days or '' }}">
+      <p class="help">Applies to readings history and the action log; enforced hourly.</p>
+    </div>
+  </div>
+
+  <h2>Integrations</h2>
+  <label for="spot_default_base_url">Spot default base URL</label>
+  <input type="text" id="spot_default_base_url" name="spot_default_base_url" class="mono"
+         value="{{ settings.spot_default_base_url or '' }}" placeholder="http://spot-host:6100">
+  <p class="help">Used by Spot actions whose config leaves base URL blank.</p>
+
+  <h2>Logging</h2>
+  <label for="log_level">Log level</label>
+  <select id="log_level" name="log_level">
+    {% for lvl in ['DEBUG','INFO','WARNING','ERROR'] %}
+    <option {% if settings.log_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+    {% endfor %}
+  </select>
+
+  <div class="btn-row">
+    <button class="primary" type="submit">Save &amp; apply</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}404 — WeatherSniffer{% endblock %}
+{% block content %}
+<div class="error-page">
+  <div class="code">404</div>
+  <p>That page doesn't exist.</p>
+  <p><a class="btn" href="{{ url_for('main.index') }}">Back to dashboard</a></p>
+</div>
+{% endblock %}

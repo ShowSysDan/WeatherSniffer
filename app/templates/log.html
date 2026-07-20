@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Action Log — WeatherSniffer{% endblock %}
+{% block content %}
+<h1>Action Log</h1>
+
+<form method="get" class="panel" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap">
+  <div>
+    <label for="rule">Rule name contains</label>
+    <input type="text" id="rule" name="rule" value="{{ rule_filter }}">
+  </div>
+  <div>
+    <label for="outcome">Outcome</label>
+    <select id="outcome" name="outcome">
+      <option value="" {% if not outcome_filter %}selected{% endif %}>any</option>
+      <option value="success" {% if outcome_filter == 'success' %}selected{% endif %}>success</option>
+      <option value="failure" {% if outcome_filter == 'failure' %}selected{% endif %}>failure</option>
+    </select>
+  </div>
+  <div class="btn-row" style="margin-top:0">
+    <button class="primary">Filter</button>
+    <a class="btn" href="{{ url_for('main.action_log_csv', rule=rule_filter, outcome=outcome_filter) }}">Export CSV</a>
+  </div>
+</form>
+
+<div class="panel table-wrap">
+<table>
+  <thead>
+    <tr><th>Fired at</th><th>Rule</th><th>Metric</th><th>Value</th><th>Action</th>
+        <th>Target</th><th>Outcome</th><th>HTTP</th><th>Latency</th><th>Error</th></tr>
+  </thead>
+  <tbody>
+  {% for e in entries %}
+  <tr>
+    <td class="mono">{{ e.fired_at | localtime }}</td>
+    <td>{{ e.rule_name }}</td>
+    <td class="mono">{{ e.metric_key }}</td>
+    <td class="num">{{ '%g' % e.trigger_value_num if e.trigger_value_num is not none else (e.trigger_value_text or '—') }}</td>
+    <td>{{ e.action_type }}</td>
+    <td class="mono">{{ e.target or '—' }}</td>
+    <td class="{{ 'status-ok' if e.outcome == 'success' else 'status-error' }}">{{ e.outcome }}</td>
+    <td>{{ e.status_code or '—' }}</td>
+    <td>{{ e.latency_ms ~ ' ms' if e.latency_ms is not none else '—' }}</td>
+    <td class="status-error" style="max-width:260px;word-break:break-all">{{ e.error or '' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="10" class="muted">No fires match the filter.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="muted" style="font-size:0.8rem">Showing the most recent 200 matches. CSV export includes up to 10,000.</p>
+{% endblock %}

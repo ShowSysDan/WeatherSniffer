@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Rules — WeatherSniffer{% endblock %}
+{% block content %}
+<h1>Rules</h1>
+<p><a class="btn primary" href="{{ url_for('main.rule_new') }}">＋ New rule</a></p>
+
+<div class="panel table-wrap">
+<table>
+  <thead>
+    <tr><th>Name</th><th>Metric</th><th>Trigger</th><th>Action</th>
+        <th>Last fired</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for r in rules %}
+  <tr>
+    <td><a href="{{ url_for('main.rule_edit', rule_id=r.id) }}">{{ r.name }}</a></td>
+    <td class="mono">{{ r.metric_key }}</td>
+    <td>
+      {% if r.trigger_mode == 'threshold' %}
+        {{ r.operator }} {{ '%g' % r.threshold_num if r.threshold_num is not none else (r.threshold_text or '') }}
+        {% if r.hysteresis %}± {{ '%g' % r.hysteresis }}{% endif %}
+        {% if r.fire_on_clear %}<span class="badge">+clear</span>{% endif %}
+      {% elif r.trigger_mode == 'on_change' %}
+        on change{% if r.min_change %} ≥ {{ '%g' % r.min_change }}{% endif %}
+      {% else %}
+        every tick
+      {% endif %}
+      {% if r.cooldown_seconds %}<span class="badge" title="cooldown">{{ r.cooldown_seconds }}s cd</span>{% endif %}
+    </td>
+    <td>{{ r.action_type }}</td>
+    <td class="mono">{{ r.last_fired_at | localtime }}</td>
+    <td><span class="badge {{ 'on' if r.enabled else 'off' }}">{{ 'enabled' if r.enabled else 'disabled' }}</span></td>
+    <td style="white-space:nowrap">
+      <button class="small" onclick="testFire({{ r.id }})">Test fire</button>
+      <form class="inline" method="post" action="{{ url_for('main.rule_toggle', rule_id=r.id) }}">
+        <button class="small">{{ 'Disable' if r.enabled else 'Enable' }}</button>
+      </form>
+      <form class="inline" method="post" action="{{ url_for('main.rule_delete', rule_id=r.id) }}"
+            onsubmit="return confirm('Delete rule “{{ r.name }}”?')">
+        <button class="small danger">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="muted">No rules yet. Add a source first, then create a rule against one of its metrics.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<pre id="test-output" class="output" style="display:none"></pre>
+
+<div class="panel">
+  <h2>How rules work</h2>
+  <ul class="muted" style="font-size:0.87rem">
+    <li><strong>Threshold</strong> fires when the metric crosses a value (edge-triggered — once per crossing, not every poll). Optional <em>hysteresis</em> stops it flapping near the boundary; <em>fire on clear</em> also fires when it drops back.</li>
+    <li><strong>On change</strong> fires whenever the value moves (optionally ignore moves smaller than <em>min change</em>).</li>
+    <li><strong>Every tick</strong> fires on every poll — use this for continuous streaming to Spot.</li>
+    <li><strong>Cooldown</strong>: after firing, wait this many seconds before firing again.</li>
+    <li>Templates accept <code>{value}</code>, <code>{value:.1f}</code>, <code>{metric_key}</code>, <code>{source_name}</code>, <code>{unit}</code>, <code>{observed_at}</code>, <code>{now}</code>.</li>
+  </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function testFire(id) {
+  const out = document.getElementById('test-output');
+  wsShowOutput(out, 'Firing…');
+  const { data } = await wsPostJSON('/api/rules/' + id + '/test_fire', {});
+  wsShowOutput(out,
+    (data.ok ? 'SUCCESS' : 'FAILURE') +
+    '\n  target:      ' + (data.target || '—') +
+    '\n  status code: ' + (data.status_code ?? '—') +
+    '\n  latency:     ' + (data.latency_ms ?? '—') + ' ms' +
+    (data.error ? '\n  error:       ' + data.error : '') +
+    '\n\nThe fire was recorded in the Action Log.');
+}
+</script>
+{% endblock %}

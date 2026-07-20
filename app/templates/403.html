@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}403 — WeatherSniffer{% endblock %}
+{% block content %}
+<div class="error-page">
+  <div class="code">403</div>
+  <p>You don't have permission for that — admin access is required.</p>
+  <p><a class="btn" href="{{ url_for('main.index') }}">Back to dashboard</a></p>
+</div>
+{% endblock %}

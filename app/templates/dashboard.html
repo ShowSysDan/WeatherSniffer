@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — WeatherSniffer{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+{% if not sources %}
+<div class="panel">
+  <p class="muted">No sources yet. <a href="{{ url_for('main.source_new') }}">Add your first Perry Weather source</a> to start polling.</p>
+</div>
+{% endif %}
+
+<div id="dash-sources">
+{% for source in sources %}
+<div class="panel" data-source-id="{{ source.id }}">
+  <h2>
+    {{ source.name }}
+    <span class="badge {{ 'on' if source.enabled else 'off' }}">{{ 'enabled' if source.enabled else 'disabled' }}</span>
+    <span class="muted" style="font-size:0.8rem">
+      · {{ source.source_type }} ·
+      last poll: <span class="poll-time">{{ source.last_polled_at | localtime }}</span>
+      <span class="poll-status {% if source.last_status == 'ok' %}status-ok{% elif source.last_status == 'error' %}status-error{% else %}status-none{% endif %}">
+        {{ source.last_status or 'never polled' }}</span>
+    </span>
+  </h2>
+  {% if source.last_error %}<p class="status-error mono" style="font-size:0.8rem">{{ source.last_error }}</p>{% endif %}
+  <div class="metric-grid">
+    {% for m in metrics.get(source.id, []) %}
+    <div class="metric-card" data-metric-key="{{ m.metric_key }}">
+      <div class="key">{{ m.metric_key }}</div>
+      <div class="val">
+        {%- if m.value_num is not none -%}
+          {{ '%g' % m.value_num }}{% if m.unit %} <small>{{ m.unit }}</small>{% endif %}
+        {%- else -%}
+          {{ m.value_text or '—' }}
+        {%- endif -%}
+      </div>
+    </div>
+    {% else %}
+    <p class="muted">No metrics yet — waiting for the first poll.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+</div>
+
+<div class="panel">
+  <h2>Recent rule fires</h2>
+  <div class="table-wrap">
+  <table id="recent-fires">
+    <thead><tr><th>When</th><th>Rule</th><th>Metric</th><th>Value</th><th>Action</th><th>Target</th><th>Outcome</th></tr></thead>
+    <tbody>
+    {% for f in recent_fires %}
+    <tr>
+      <td class="mono">{{ f.fired_at | localtime }}</td>
+      <td>{{ f.rule_name }}</td>
+      <td class="mono">{{ f.metric_key }}</td>
+      <td class="num">{{ f.trigger_value_num if f.trigger_value_num is not none else (f.trigger_value_text or '—') }}</td>
+      <td>{{ f.action_type }}</td>
+      <td class="mono">{{ f.target or '—' }}</td>
+      <td class="{{ 'status-ok' if f.outcome == 'success' else 'status-error' }}">{{ f.outcome }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="muted">Nothing has fired yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted" style="font-size:0.8rem">Auto-refreshes every 15 s. Full history in the <a href="{{ url_for('main.action_log') }}">Action Log</a>.</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* Light-touch auto-refresh: reload the page every 15 s unless a text field
+   has focus (there are none on this page, but be safe). */
+setInterval(() => {
+  if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+  fetch('{{ url_for("api.dashboard") }}', {headers: {'Accept': 'application/json'}})
+    .then(r => { if (r.ok) location.reload(); })
+    .catch(() => {});
+}, 15000);
+</script>
+{% endblock %}

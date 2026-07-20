@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if source else 'New' }} source — WeatherSniffer{% endblock %}
+{% block content %}
+<h1>{{ 'Edit source' if source else 'New source' }}</h1>
+
+{% set f = form or {} %}
+<form class="stack" method="post">
+  <label for="name">Name</label>
+  <input type="text" id="name" name="name" required
+         value="{{ f.get('name', source.name if source else '') }}"
+         placeholder="e.g. DPAC — Conditions">
+
+  <label for="slug">Slug <span class="help" style="display:inline">(prefixes every metric key; auto-derived from the name if blank)</span></label>
+  <input type="text" id="slug" name="slug"
+         value="{{ f.get('slug', source.slug if source else '') }}"
+         placeholder="dpac_conditions">
+
+  <label for="source_type">Type</label>
+  <select id="source_type" name="source_type">
+    {% for t in source_types %}
+    <option value="{{ t }}" {% if f.get('source_type', source.source_type if source else 'conditions') == t %}selected{% endif %}>{{ t }}</option>
+    {% endfor %}
+  </select>
+
+  <div id="guid-field">
+    <label for="guid">Perry GUID</label>
+    <input type="text" id="guid" name="guid" class="mono"
+           value="{{ f.get('guid', source.guid if source else '') }}"
+           placeholder="00000000-0000-0000-0000-000000000000">
+    <p class="help">The location/station GUID from the Perry Weather widget URL.</p>
+  </div>
+
+  <div id="url-field">
+    <label for="url">URL (custom_url only)</label>
+    <input type="url" id="url" name="url" class="mono"
+           value="{{ f.get('url', source.url if source else '') }}"
+           placeholder="https://…">
+  </div>
+
+  <label for="poll_interval_seconds">Poll interval (seconds)</label>
+  <input type="number" id="poll_interval_seconds" name="poll_interval_seconds" min="5"
+         value="{{ f.get('poll_interval_seconds', source.poll_interval_seconds if source else 60) }}">
+
+  <div class="check">
+    <input type="checkbox" id="enabled" name="enabled"
+           {% if f.get('enabled', 'on' if (source.enabled if source else True) else '') == 'on' %}checked{% endif %}>
+    <label for="enabled">Enabled</label>
+  </div>
+
+  <div class="btn-row">
+    <button class="primary" type="submit">Save</button>
+    <button type="button" onclick="testFetchForm()">Test fetch (current fields)</button>
+    <a class="btn" href="{{ url_for('main.sources') }}">Cancel</a>
+  </div>
+</form>
+
+<pre id="test-output" class="output" style="display:none;margin-top:1rem"></pre>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function syncTypeFields() {
+  const t = document.getElementById('source_type').value;
+  document.getElementById('url-field').style.display = (t === 'custom_url') ? '' : 'none';
+  document.getElementById('guid-field').style.display = (t === 'custom_url') ? 'none' : '';
+}
+document.getElementById('source_type').addEventListener('change', syncTypeFields);
+syncTypeFields();
+
+async function testFetchForm() {
+  const out = document.getElementById('test-output');
+  wsShowOutput(out, 'Fetching…');
+  const { data } = await wsPostJSON('/api/sources/test_fetch', {
+    source_type: document.getElementById('source_type').value,
+    guid: document.getElementById('guid').value,
+    url: document.getElementById('url').value,
+    slug: document.getElementById('slug').value || 'test',
+  });
+  if (data.ok) {
+    wsShowOutput(out, 'OK — discovered metric keys:\n  '
+      + data.metric_keys.join('\n  ') + '\n\nRaw response:\n' + data.raw);
+  } else {
+    wsShowOutput(out, 'FETCH FAILED: ' + (data.error || 'unknown error'));
+  }
+}
+</script>
+{% endblock %}
