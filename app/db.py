@@ -72,9 +72,29 @@ def init_db(config):
 
     from app import models  # noqa: F401  (register models with Base)
     Base.metadata.create_all(engine)
+    _apply_additive_migrations()
 
     if _auth_schema:
         _ensure_app_sessions()
+
+
+# Columns added after a table first shipped. create_all only creates whole
+# tables, so additive column changes are applied here (idempotent).
+_ADDITIVE_COLUMNS = (
+    ('sources', 'last_success_at', 'TIMESTAMPTZ'),
+)
+
+
+def _apply_additive_migrations():
+    with engine.connect() as conn:
+        for table, column, ddl_type in _ADDITIVE_COLUMNS:
+            try:
+                conn.execute(text(
+                    f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {ddl_type}'))
+                conn.commit()
+            except Exception as exc:
+                conn.rollback()
+                log.warning('Could not add column %s.%s: %s', table, column, exc)
 
 
 def _ensure_app_sessions():

@@ -6,6 +6,7 @@ import logging
 from flask import Blueprint, abort, jsonify, request, session
 
 from app.__version__ import __version__
+from app.auth import admin_required
 from app.db import SessionLocal
 from app.engine import actions, poller
 from app.models import ActionLog, MetricCurrent, Rule, Source
@@ -60,6 +61,7 @@ def dashboard():
 
 
 @bp.route('/sources/test_fetch', methods=['POST'])
+@admin_required
 def source_test_fetch():
     """Test fetch for the source form (unsaved values) OR a saved source.
 

@@ -1,6 +1,6 @@
 # WeatherSniffer
 
-**Current version: 0.1.0**
+**Current version: 0.2.0**
 
 WeatherSniffer polls **Perry Weather** public widget/client endpoints (keyed by
 GUIDs — no authentication required), normalizes each response into flat
@@ -124,7 +124,7 @@ server-side sessions in `shared.app_sessions` (opaque `session` cookie,
 passwords verified with Werkzeug scrypt.
 
 - **Login is gated on `is_app_user`**; `role == 'admin'` or `is_app_admin`
-  unlocks admin-only pages (Settings).
+  unlocks admin-only functions (Settings, and all source/polling management).
 - Roles/flags are re-read from the shared DB every ~5 minutes; revoked access
   ends the session mid-flight. If the shared DB is unreachable while auth is
   enabled, WeatherSniffer **fails closed**.
@@ -171,8 +171,22 @@ Each response is flattened into dotted metric keys prefixed with the source's
 `dpac_lightning.lightningDelay`, `dpac_aqi.PM2_5.nowcast`, …
 `{"value": X, "unit": U}` objects collapse to one metric; booleans land in both
 columns (`true/false` text **and** `1/0` numeric) so rules can use either;
-null fields are skipped. The lightning-delay endpoint returns a bare number —
-it becomes `<slug>.lightningDelay` (unit `min`).
+null fields are skipped.
+
+**Lightning delay:** the endpoint returns a bare number — the lightning-hold
+countdown in **seconds**. It becomes `<slug>.lightningDelay` (unit `sec`);
+**positive = lightning nearby (hold active), 0 = all clear**. The canonical
+rule is `lightningDelay > 0` with **fire on clear** ticked, so one rule covers
+both the hold starting and the all-clear.
+
+**Stale-data guard:** every source also maintains a synthetic metric
+`<slug>._data_age_seconds` — seconds since the feed last produced fresh data
+(the response's `observationTime` where one exists, otherwise the last
+successful fetch). It keeps counting up when the endpoint fails **or** keeps
+returning HTTP 200 with frozen data, so an ordinary threshold rule (e.g.
+`<slug>._data_age_seconds > 600` → webhook/Spot event) alerts on a dead or
+stuck feed. Strongly recommended for any source that drives safety decisions
+(lightning holds).
 
 **Timestamps:** the API's `observationTime`/`lastUpdated` values carry no
 timezone and are **assumed UTC**. Everything is stored UTC and displayed in the
@@ -180,7 +194,7 @@ server's local timezone.
 
 ## Using WeatherSniffer — adding a rule
 
-1. **Add the source first.** Sources → New: pick a **type** (e.g.
+1. **Add the source first** (admin only). Sources → New: pick a **type** (e.g.
    `conditions`), paste the Perry **GUID**, give it a **name**, set a **poll
    interval**, Save. Hit **Test fetch** to confirm data returns and to populate
    the metric list.
@@ -219,7 +233,9 @@ server's local timezone.
      monitor token.
    - *Annotate a lightning hold:* metric `dpac_lightning.lightningDelay`,
      threshold `> 0`, `fire on clear` on, action **Spot event** label
-     `Lightning hold ({value} min)`.
+     `Lightning hold ({value} sec)`.
+   - *Alert on a dead feed:* metric `dpac_conditions._data_age_seconds`,
+     threshold `> 600`, action HTTP webhook to your ops endpoint.
 
 Threshold rules are **edge-triggered**: they fire on the false→true transition,
 not on every poll while the condition stays true. Rule edits reset the edge
@@ -230,7 +246,7 @@ state so behavior after a change is predictable.
 | page | what it does |
 |---|---|
 | `/` | Dashboard: current metrics grouped by source, poll status, recent fires; auto-refreshes every 15 s |
-| `/sources` | List / add / edit / enable / disable / delete sources; **Test fetch** shows the raw response + discovered metric keys |
+| `/sources` | List sources (all users); add / edit / enable / disable / delete and **Test fetch** are **admin-only** (poll intervals live here) |
 | `/rules` | List / add / edit / enable / disable / delete rules; metric dropdown from discovered metrics; **Test fire** |
 | `/log` | Action log: filterable (rule, outcome), CSV export |
 | `/settings` | Admin-only: syslog targets, retention, defaults, Spot base URL, log level |

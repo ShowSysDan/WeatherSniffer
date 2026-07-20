@@ -5,7 +5,9 @@
 
 {% if not sources %}
 <div class="panel">
-  <p class="muted">No sources yet. <a href="{{ url_for('main.source_new') }}">Add your first Perry Weather source</a> to start polling.</p>
+  <p class="muted">No sources yet.
+    {% if is_admin %}<a href="{{ url_for('main.source_new') }}">Add your first Perry Weather source</a> to start polling.
+    {% else %}An administrator needs to add a Perry Weather source to start polling.{% endif %}</p>
 </div>
 {% endif %}
 

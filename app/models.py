@@ -34,6 +34,7 @@ class Source(Base):
     poll_interval_seconds = Column(Integer, nullable=False, default=60)
     enabled = Column(Boolean, nullable=False, default=True)
     last_polled_at = Column(DateTime(timezone=True), nullable=True)
+    last_success_at = Column(DateTime(timezone=True), nullable=True)
     last_status = Column(Text, nullable=True)       # ok | error
     last_error = Column(Text, nullable=True)
     location_info = Column(JSONB, nullable=True)    # org_location metadata (address/lat/long/…)

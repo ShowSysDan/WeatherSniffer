@@ -5,6 +5,28 @@ All notable changes to WeatherSniffer are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-20
+
+### Added
+- **Stale-data guard**: every source now maintains a synthetic
+  `<slug>._data_age_seconds` metric — seconds since the feed last produced
+  fresh data (`observationTime` where present, else the last successful
+  fetch). It keeps counting up when the endpoint fails or returns frozen data,
+  so ordinary threshold rules can alert on a dead/stuck feed. Rules bound to
+  it are evaluated even while fetches are failing.
+- `sources.last_success_at` column (additive migration applied on boot).
+- Inline help on the Rules page for the stale-data guard and lightning-delay
+  semantics.
+
+### Changed
+- **Source management is now admin-only**: add/edit/enable/disable/delete and
+  Test fetch (and with them all polling-interval control) require
+  `role='admin'` or `is_app_admin`. All app users can still view the source
+  list, dashboard, rules and action log.
+- Lightning delay is documented and labeled as a countdown in **seconds**
+  (unit `sec`, was `min`): positive = lightning nearby (hold active),
+  0 = all clear.
+
 ## [0.1.0] - 2026-07-20
 
 ### Added

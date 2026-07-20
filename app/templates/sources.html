@@ -2,7 +2,11 @@
 {% block title %}Sources — WeatherSniffer{% endblock %}
 {% block content %}
 <h1>Sources</h1>
+{% if is_admin %}
 <p><a class="btn primary" href="{{ url_for('main.source_new') }}">＋ New source</a></p>
+{% else %}
+<p class="muted">Sources are managed by administrators.</p>
+{% endif %}
 
 <div class="panel table-wrap">
 <table>
@@ -13,7 +17,7 @@
   <tbody>
   {% for s in sources %}
   <tr>
-    <td><a href="{{ url_for('main.source_edit', source_id=s.id) }}">{{ s.name }}</a></td>
+    <td>{% if is_admin %}<a href="{{ url_for('main.source_edit', source_id=s.id) }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
     <td class="mono">{{ s.slug }}</td>
     <td>{{ s.source_type }}</td>
     <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.url or s.guid or '—' }}</td>
@@ -25,6 +29,7 @@
       {% elif s.last_status == 'ok' %}<span class="badge on">ok</span>{% endif %}
     </td>
     <td style="white-space:nowrap">
+      {% if is_admin %}
       <button class="small" onclick="testFetch({{ s.id }})">Test fetch</button>
       <form class="inline" method="post" action="{{ url_for('main.source_toggle', source_id=s.id) }}">
         <button class="small">{{ 'Disable' if s.enabled else 'Enable' }}</button>
@@ -33,6 +38,7 @@
             onsubmit="return confirm('Delete source “{{ s.name }}” and all its metrics, history and rules?')">
         <button class="small danger">Delete</button>
       </form>
+      {% endif %}
     </td>
   </tr>
   {% else %}

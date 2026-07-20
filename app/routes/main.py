@@ -97,6 +97,7 @@ def _source_from_form(db, source=None):
 
 
 @bp.route('/sources/new', methods=['GET', 'POST'])
+@admin_required
 def source_new():
     db = SessionLocal()
     if request.method == 'POST':
@@ -117,6 +118,7 @@ def source_new():
 
 
 @bp.route('/sources/<int:source_id>/edit', methods=['GET', 'POST'])
+@admin_required
 def source_edit(source_id):
     db = SessionLocal()
     source = db.get(Source, source_id) or abort(404)
@@ -138,6 +140,7 @@ def source_edit(source_id):
 
 
 @bp.route('/sources/<int:source_id>/toggle', methods=['POST'])
+@admin_required
 def source_toggle(source_id):
     db = SessionLocal()
     source = db.get(Source, source_id) or abort(404)
@@ -150,6 +153,7 @@ def source_toggle(source_id):
 
 
 @bp.route('/sources/<int:source_id>/delete', methods=['POST'])
+@admin_required
 def source_delete(source_id):
     db = SessionLocal()
     source = db.get(Source, source_id) or abort(404)
