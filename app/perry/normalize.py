@@ -122,7 +122,8 @@ def _normalize_observations_v2(payload, out):
 
 def _normalize_lightning_delay(payload, out):
     # The body is a bare number: the lightning-hold countdown in SECONDS.
-    # Positive = lightning nearby (hold active), 0 = all clear.
+    # A strike (re)starts the 10-minute hold at 600 and it counts down;
+    # positive = hold active, 0 = all clear.
     value = payload
     if isinstance(payload, dict):  # tolerate a wrapped variant
         value = payload.get('data', payload.get('value'))
