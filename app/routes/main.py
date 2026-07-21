@@ -86,6 +86,10 @@ def _source_from_form(db, source=None):
         raise ValueError('Poll interval must be a number of seconds.')
     if interval < 5:
         raise ValueError('Poll interval must be at least 5 seconds.')
+    try:
+        priority = int(form.get('aggregation_priority') or 0)
+    except ValueError:
+        raise ValueError('Aggregation priority must be a whole number.')
 
     if source is None:
         source = Source()
@@ -96,6 +100,7 @@ def _source_from_form(db, source=None):
     source.guid = guid
     source.url = url
     source.poll_interval_seconds = interval
+    source.aggregation_priority = priority
     source.enabled = form.get('enabled') == 'on'
     return source
 

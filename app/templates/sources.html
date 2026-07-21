@@ -21,7 +21,7 @@
     <td class="mono">{{ s.slug }}</td>
     <td>{{ s.source_type }}</td>
     <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.url or s.guid or '—' }}</td>
-    <td>{{ s.poll_interval_seconds }}s</td>
+    <td>{{ s.poll_interval_seconds }}s{% if s.aggregation_priority %} <span class="badge" title="Current-weather aggregation priority">prio {{ s.aggregation_priority }}</span>{% endif %}</td>
     <td class="mono">{{ s.last_polled_at | localtime }}</td>
     <td>
       <span class="badge {{ 'on' if s.enabled else 'off' }}">{{ 'enabled' if s.enabled else 'disabled' }}</span>

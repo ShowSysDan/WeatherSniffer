@@ -84,6 +84,8 @@ _ADDITIVE_STATEMENTS = (
     'ALTER TABLE sources ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ',
     # 0.5.0: master rules (aggregated Current-weather input) have NULL source_id
     'ALTER TABLE rules ALTER COLUMN source_id DROP NOT NULL',
+    # 0.6.0: per-source preference for the Current-weather aggregation
+    'ALTER TABLE sources ADD COLUMN IF NOT EXISTS aggregation_priority INTEGER NOT NULL DEFAULT 0',
 )
 
 

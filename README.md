@@ -1,6 +1,6 @@
 # WeatherSniffer
 
-**Current version: 0.5.0**
+**Current version: 0.6.0**
 
 WeatherSniffer polls **Perry Weather** public widget/client endpoints (keyed by
 GUIDs — no authentication required), normalizes each response into flat
@@ -200,10 +200,15 @@ shown at the top of the dashboard and served at `GET /api/v1/weather`:
   wind, rain, lightning hold, PM2.5, …) with known synonyms resolved
   (`relativeHumidity`→humidity, `wetBulbGlobalTemp`→WBGT,
   `rain1Hr`→rain-1hr, `heatIndex`→feels-like).
-- Per field, the value from a **healthy source with the freshest
-  observation time wins**; each card shows which source it came from and how
-  old it is. Values older than 15 minutes (or from a failing source) are
-  flagged **stale** (⚠, dimmed).
+- Per field the winner is chosen in this order: **healthy** sources beat
+  failing ones → **non-stale** data beats stale → higher **aggregation
+  priority** wins (set per source in the admin source form; 0 = no
+  preference) → freshest observation time breaks ties. So you can pin a
+  preferred station and it keeps its fields even when another feed reports a
+  moment sooner — but it is skipped automatically while its polls fail or its
+  data goes stale (>15 min), and the readout falls back to the next-best
+  source. Each card shows which source won and how old the data is; stale
+  values are flagged (⚠, dimmed).
 - Every source's full metric set still appears in its own panel below — the
   readout is a view, not a replacement.
 

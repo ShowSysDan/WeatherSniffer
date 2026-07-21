@@ -33,6 +33,9 @@ class Source(Base):
     url = Column(Text, nullable=True)               # custom_url only
     poll_interval_seconds = Column(Integer, nullable=False, default=60)
     enabled = Column(Boolean, nullable=False, default=True)
+    # Current-weather aggregation preference: higher wins a canonical field
+    # over fresher-but-lower-priority sources (while healthy and not stale).
+    aggregation_priority = Column(Integer, nullable=False, default=0)
     last_polled_at = Column(DateTime(timezone=True), nullable=True)
     last_success_at = Column(DateTime(timezone=True), nullable=True)
     last_status = Column(Text, nullable=True)       # ok | error

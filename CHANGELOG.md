@@ -5,6 +5,19 @@ All notable changes to WeatherSniffer are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-21
+
+### Added
+- **Per-source aggregation priority**: a new "Aggregation priority" field on
+  the (admin-only) source form. Higher priority wins the Current-weather
+  readout for the fields that source provides, even when another source is
+  fresher. Selection order is now healthy → non-stale → priority →
+  freshness, so a preferred source is skipped automatically while its polls
+  fail or its data goes stale (>15 min) and the readout falls back to the
+  next-best feed. Priority shows as a badge in the sources list and in
+  `GET /api/v1/sources`. Aggregated (master) rules follow the same choice.
+  (Schema: `sources.aggregation_priority`, idempotent migration on boot.)
+
 ## [0.5.0] - 2026-07-21
 
 ### Added
