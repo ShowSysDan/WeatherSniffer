@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}500 — WeatherSniffer{% endblock %}
+{% block content %}
+<div class="error-page">
+  <div class="code">500</div>
+  <p>Something went wrong on the server. The error has been logged.</p>
+  <p><a class="btn" href="{{ url_for('main.index') }}">Back to dashboard</a></p>
+</div>
+{% endblock %}

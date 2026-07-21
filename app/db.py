@@ -86,6 +86,8 @@ _ADDITIVE_STATEMENTS = (
     'ALTER TABLE rules ALTER COLUMN source_id DROP NOT NULL',
     # 0.6.0: per-source preference for the Current-weather aggregation
     'ALTER TABLE sources ADD COLUMN IF NOT EXISTS aggregation_priority INTEGER NOT NULL DEFAULT 0',
+    # 0.7.0: syslog carries only >= this severity (journal keeps everything)
+    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS syslog_min_level TEXT NOT NULL DEFAULT 'WARNING'",
 )
 
 

@@ -25,7 +25,12 @@ def _purge_expired_sessions():
     forever. Expired rows are dead in every app, so purging is safe."""
     db = get_db()
     try:
-        cur = db.execute('DELETE FROM app_sessions WHERE expires_at < CURRENT_TIMESTAMP')
+        # expires_at holds NAIVE UTC (the family writes datetime.utcnow()).
+        # Compare against UTC explicitly: plain CURRENT_TIMESTAMP would make
+        # Postgres interpret the naive column in the server's timezone and,
+        # on a DB whose timezone is ahead of UTC, purge LIVE sessions early
+        # (spontaneous logouts).
+        cur = db.execute("DELETE FROM app_sessions WHERE expires_at < (now() AT TIME ZONE 'utc')")
         db.commit()
         if cur.rowcount:
             log.info('Retention purge: %d expired session row(s) removed', cur.rowcount)

@@ -71,11 +71,17 @@ class DBSessionInterface(SessionInterface):
                 "SELECT data, expires_at FROM app_sessions WHERE sid = %s", (sid,)
             ).fetchone()
             if not row:
+                # Cookie references a row that no longer exists: logged out
+                # from another family app, purged, or the row never existed.
+                log.info('Session rejected sid=…%s reason=no-row '
+                         '(logged out elsewhere or purged)', sid[-6:])
                 return {}, False
             expires = row['expires_at']
             if isinstance(expires, str):
                 expires = datetime.fromisoformat(expires.split('.')[0].replace('Z', ''))
             if expires < datetime.utcnow():
+                log.info('Session rejected sid=…%s reason=expired '
+                         '(idle past lifetime, expired %s UTC)', sid[-6:], expires)
                 db.execute("DELETE FROM app_sessions WHERE sid = %s", (sid,))
                 db.commit()
                 return {}, False
@@ -330,6 +336,8 @@ def install_gate(app):
             log.error('Auth database unreachable during role re-check: %s', exc)
             abort(503)
         if not user or not user.get(_REQUIRE_FLAG):
+            log.warning('Session ended (user deleted or %s revoked in shared directory) '
+                        'actor=%s via=web', _REQUIRE_FLAG, session.get('username'))
             session.clear()
             return redirect(url_for('auth.login'))
         session['user_role'] = user['role']

@@ -19,7 +19,8 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(get_config())
     app.config['WS_VERSION'] = __version__
-    app.permanent_session_lifetime = timedelta(hours=12)
+    app.permanent_session_lifetime = timedelta(
+        hours=app.config.get('SESSION_LIFETIME_HOURS', 12))
 
     logging_setup.setup_base(app.config.get('LOG_LEVEL', 'INFO'))
 
@@ -77,13 +78,22 @@ def create_app():
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone().strftime(fmt)
 
+    from flask import request
+
     @app.errorhandler(403)
     def _forbidden(e):
         return render_template('403.html'), 403
 
     @app.errorhandler(404)
     def _not_found(e):
+        logging_setup.log.warning('404 path=%s remote=%s', request.path, request.remote_addr)
         return render_template('404.html'), 404
+
+    @app.errorhandler(500)
+    def _server_error(e):
+        logging_setup.log.error('500 path=%s remote=%s error=%s',
+                                request.path, request.remote_addr, e)
+        return render_template('500.html'), 500
 
     @app.teardown_appcontext
     def _remove_session(exc=None):

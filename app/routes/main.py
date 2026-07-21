@@ -433,6 +433,8 @@ def settings():
             row.syslog_remote_host = form.get('syslog_remote_host', '').strip() or None
             row.syslog_remote_port = int(form.get('syslog_remote_port') or 514)
             row.syslog_facility = form.get('syslog_facility', 'local0').strip() or 'local0'
+            level = form.get('syslog_min_level', 'WARNING').upper()
+            row.syslog_min_level = level if level in ('INFO', 'WARNING', 'ERROR') else 'WARNING'
             row.default_poll_interval_seconds = max(5, int(form.get('default_poll_interval_seconds') or 60))
             retention = form.get('default_retention_days', '').strip()
             row.default_retention_days = int(retention) if retention else None

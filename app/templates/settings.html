@@ -41,6 +41,17 @@
     </div>
   </div>
 
+  <label for="syslog_min_level">Syslog minimum severity</label>
+  <select id="syslog_min_level" name="syslog_min_level">
+    {% for lvl in ['INFO','WARNING','ERROR'] %}
+    <option {% if settings.syslog_min_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+    {% endfor %}
+  </select>
+  <p class="help">Only records at or above this severity are forwarded to syslog —
+     WARNING keeps it to fetch/action/auth failures and 404s, without the per-fire
+     chatter of streaming rules. The full stream still goes to
+     <code>journalctl -u weathersniffer</code>.</p>
+
   <h2>Polling &amp; retention</h2>
   <div class="form-row">
     <div>
