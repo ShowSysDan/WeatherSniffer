@@ -25,7 +25,7 @@
   <div id="guid-field">
     <label for="guid">Perry GUID</label>
     <input type="text" id="guid" name="guid" class="mono"
-           value="{{ f.get('guid', source.guid if source else '') }}"
+           value="{{ f.get('guid', (source.guid if source else '') or '') or '' }}"
            placeholder="00000000-0000-0000-0000-000000000000">
     <p class="help">The location/station GUID from the Perry Weather widget URL.</p>
   </div>
@@ -33,7 +33,7 @@
   <div id="url-field">
     <label for="url">URL (custom_url only)</label>
     <input type="url" id="url" name="url" class="mono"
-           value="{{ f.get('url', source.url if source else '') }}"
+           value="{{ f.get('url', (source.url if source else '') or '') or '' }}"
            placeholder="https://…">
   </div>
 
@@ -60,9 +60,14 @@
 {% block extra_js %}
 <script>
 function syncTypeFields() {
-  const t = document.getElementById('source_type').value;
-  document.getElementById('url-field').style.display = (t === 'custom_url') ? '' : 'none';
-  document.getElementById('guid-field').style.display = (t === 'custom_url') ? 'none' : '';
+  const isCustom = document.getElementById('source_type').value === 'custom_url';
+  document.getElementById('url-field').style.display = isCustom ? '' : 'none';
+  document.getElementById('guid-field').style.display = isCustom ? 'none' : '';
+  /* Disable the hidden input: browsers refuse to submit a form whose invalid
+     control can't be focused ("not focusable"), and disabled controls are
+     exempt from validation and omitted from the POST. */
+  document.getElementById('url').disabled = !isCustom;
+  document.getElementById('guid').disabled = isCustom;
 }
 document.getElementById('source_type').addEventListener('change', syncTypeFields);
 syncTypeFields();

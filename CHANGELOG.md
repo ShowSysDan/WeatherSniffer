@@ -5,6 +5,16 @@ All notable changes to WeatherSniffer are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-07-21
+
+### Fixed
+- **Source edit form: Save did nothing for GUID-based sources.** The hidden
+  URL field rendered Python `None` as `value="None"`, which failed the
+  browser's `type="url"` validation; because the field was hidden the browser
+  blocked submission silently ("an invalid form control … is not focusable").
+  None values now render empty, and whichever of GUID/URL doesn't apply to
+  the selected type is disabled so it's exempt from validation.
+
 ## [0.3.0] - 2026-07-21
 
 ### Added

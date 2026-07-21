@@ -1,6 +1,6 @@
 # WeatherSniffer
 
-**Current version: 0.3.0**
+**Current version: 0.3.1**
 
 WeatherSniffer polls **Perry Weather** public widget/client endpoints (keyed by
 GUIDs — no authentication required), normalizes each response into flat
