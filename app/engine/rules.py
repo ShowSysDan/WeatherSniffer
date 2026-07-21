@@ -131,6 +131,35 @@ def evaluate_rule(db, rule, source, value_num, value_text, unit=None, observed_a
         rule.last_fired_at = now
 
 
+def evaluate_master_rules(db, polled_source):
+    """Evaluate rules bound to the aggregated Current-weather readout
+    (source_id IS NULL, metric_key like 'weather.wgbt').
+
+    Only the source currently *winning* a canonical field drives its rules:
+    the rule follows the freshest healthy feed's cadence and fails over
+    automatically when that feed dies, and an every_tick rule doesn't fire
+    once per source per interval.
+    """
+    from app.weather import build_master_readout
+
+    master_rules = (db.query(Rule)
+                    .filter(Rule.enabled.is_(True), Rule.source_id.is_(None))
+                    .all())
+    if not master_rules:
+        return
+    by_field = {f'weather.{f["field"]}': f for f in build_master_readout(db)}
+    for rule in master_rules:
+        entry = by_field.get(rule.metric_key)
+        if entry is None or entry['source_slug'] != polled_source.slug:
+            continue
+        try:
+            evaluate_rule(db, rule, polled_source,
+                          entry['value_num'], entry['value_text'],
+                          unit=entry['unit'], observed_at=entry['observed_at'])
+        except Exception:
+            log.exception('Master rule evaluation failed rule=%s', rule.name)
+
+
 def evaluate_source_rules(db, source, metric_rows):
     """Run every enabled rule bound to this source against its fresh metrics."""
     by_key = {m.metric_key: m for m in metric_rows}

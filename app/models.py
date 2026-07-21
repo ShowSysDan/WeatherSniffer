@@ -78,7 +78,9 @@ class Rule(Base):
     id = Column(Integer, primary_key=True)
     name = Column(Text, nullable=False)
     enabled = Column(Boolean, nullable=False, default=True)
-    source_id = Column(Integer, ForeignKey('sources.id', ondelete='CASCADE'), nullable=False)
+    # NULL source_id = a "master" rule bound to the aggregated Current-weather
+    # readout; metric_key is then a canonical field like 'weather.wgbt'.
+    source_id = Column(Integer, ForeignKey('sources.id', ondelete='CASCADE'), nullable=True)
     metric_key = Column(Text, nullable=False)
     trigger_mode = Column(Text, nullable=False)     # threshold | on_change | every_tick
     operator = Column(Text, nullable=True)          # threshold mode only

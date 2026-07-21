@@ -14,7 +14,7 @@
         {%- if f.value_text in ('true', 'false') -%}
           {{ 'yes' if f.value_text == 'true' else 'no' }}
         {%- elif f.value_num is not none -%}
-          {{ '%g' % f.value_num }}{% if f.unit %} <small>{{ f.unit }}</small>{% endif %}
+          {{ f.value_num | num1 }}{% if f.unit %} <small>{{ f.unit }}</small>{% endif %}
         {%- else -%}
           {{ f.value_text or '—' }}
         {%- endif -%}
@@ -55,7 +55,7 @@
       <div class="key">{{ m.metric_key }}</div>
       <div class="val">
         {%- if m.value_num is not none -%}
-          {{ '%g' % m.value_num }}{% if m.unit %} <small>{{ m.unit }}</small>{% endif %}
+          {{ m.value_num | num1 }}{% if m.unit %} <small>{{ m.unit }}</small>{% endif %}
         {%- else -%}
           {{ m.value_text or '—' }}
         {%- endif -%}
@@ -80,7 +80,7 @@
       <td class="mono">{{ f.fired_at | localtime }}</td>
       <td>{{ f.rule_name }}</td>
       <td class="mono">{{ f.metric_key }}</td>
-      <td class="num">{{ f.trigger_value_num if f.trigger_value_num is not none else (f.trigger_value_text or '—') }}</td>
+      <td class="num">{{ f.trigger_value_num | num1 if f.trigger_value_num is not none else (f.trigger_value_text or '—') }}</td>
       <td>{{ f.action_type }}</td>
       <td class="mono">{{ f.target or '—' }}</td>
       <td class="{{ 'status-ok' if f.outcome == 'success' else 'status-error' }}">{{ f.outcome }}</td>
