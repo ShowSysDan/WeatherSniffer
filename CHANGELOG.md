@@ -24,8 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `role='admin'` or `is_app_admin`. All app users can still view the source
   list, dashboard, rules and action log.
 - Lightning delay is documented and labeled as a countdown in **seconds**
-  (unit `sec`, was `min`): positive = lightning nearby (hold active),
-  0 = all clear.
+  (unit `sec`, was `min`): a strike (re)starts the 10-minute hold at 600 and
+  it counts down; positive = hold active, 0 = all clear.
 
 ## [0.1.0] - 2026-07-20
 

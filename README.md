@@ -174,10 +174,13 @@ columns (`true/false` text **and** `1/0` numeric) so rules can use either;
 null fields are skipped.
 
 **Lightning delay:** the endpoint returns a bare number — the lightning-hold
-countdown in **seconds**. It becomes `<slug>.lightningDelay` (unit `sec`);
-**positive = lightning nearby (hold active), 0 = all clear**. The canonical
-rule is `lightningDelay > 0` with **fire on clear** ticked, so one rule covers
-both the hold starting and the all-clear.
+countdown in **seconds**. A strike (re)starts the 10-minute hold at **600**
+and it counts down; another strike during the hold resets it back to 600.
+It becomes `<slug>.lightningDelay` (unit `sec`); **positive = hold active,
+0 = all clear**. The canonical rule is `lightningDelay > 0` with **fire on
+clear** ticked, so one rule covers both the hold starting and the all-clear —
+and because it's edge-triggered, mid-hold resets to 600 extend the hold
+without re-firing.
 
 **Stale-data guard:** every source also maintains a synthetic metric
 `<slug>._data_age_seconds` — seconds since the feed last produced fresh data
