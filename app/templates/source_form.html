@@ -41,6 +41,13 @@
   <input type="number" id="poll_interval_seconds" name="poll_interval_seconds" min="5"
          value="{{ f.get('poll_interval_seconds', source.poll_interval_seconds if source else 60) }}">
 
+  <label for="aggregation_priority">Aggregation priority</label>
+  <input type="number" id="aggregation_priority" name="aggregation_priority"
+         value="{{ f.get('aggregation_priority', source.aggregation_priority if source else 0) }}">
+  <p class="help">Higher wins the Current-weather readout for the fields this source provides,
+     even when another source is fresher. A preferred source is skipped automatically while its
+     polls fail or its data is stale (&gt;15 min). 0 = no preference (freshest wins).</p>
+
   <div class="check">
     <input type="checkbox" id="enabled" name="enabled"
            {% if f.get('enabled', 'on' if (source.enabled if source else True) else '') == 'on' %}checked{% endif %}>

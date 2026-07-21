@@ -9,10 +9,15 @@ synonyms, and picks the freshest value from a healthy source — producing the
 single "standard weather readout" shown at the top of the dashboard and
 served at /api/v1/weather.
 
-Selection rule per field: candidates from sources whose last poll succeeded
-beat candidates from erroring sources; within that, the freshest
-observed_at (falling back to fetch time) wins. Values older than
-STALE_AFTER_SECONDS are still shown but flagged stale.
+Selection rule per field, in order:
+  1. candidates from sources whose last poll succeeded beat erroring ones;
+  2. candidates with non-stale data beat stale ones;
+  3. higher `sources.aggregation_priority` wins (operator preference —
+     a preferred source keeps a field even when another feed is fresher);
+  4. freshest observed_at (falling back to fetch time) breaks ties.
+So a preferred source is skipped automatically while it is failing or its
+data has gone stale, and the readout falls back to the next-best feed.
+Values older than STALE_AFTER_SECONDS are still shown but flagged stale.
 """
 from datetime import datetime, timezone
 
@@ -89,10 +94,12 @@ def build_master_readout(db):
             continue
         healthy = source.last_status == 'ok'
         freshness = _as_utc(m.observed_at) or _as_utc(m.updated_at) or now
-        rank = (healthy, freshness)      # healthy beats erroring, then freshest
+        age = (now - freshness).total_seconds()
+        not_stale = age <= STALE_AFTER_SECONDS
+        priority = source.aggregation_priority or 0
+        rank = (healthy, not_stale, priority, freshness)
         incumbent = best.get(canon)
         if incumbent is None or rank > incumbent['_rank']:
-            age = (now - freshness).total_seconds()
             best[canon] = {
                 '_rank': rank,
                 'value_num': m.value_num,

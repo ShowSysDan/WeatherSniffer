@@ -80,6 +80,7 @@ def sources():
         'source_type': s.source_type,
         'enabled': s.enabled,
         'poll_interval_seconds': s.poll_interval_seconds,
+        'aggregation_priority': s.aggregation_priority or 0,
         'last_polled_at': s.last_polled_at.isoformat() if s.last_polled_at else None,
         'last_status': s.last_status,
         'last_error': s.last_error,
