@@ -2,6 +2,7 @@
 API_KEY (X-API-Key header or ?api_key=), matching Leash. Leave API_KEY unset
 for open access on a trusted LAN.
 """
+import hmac
 import logging
 
 from flask import Blueprint, current_app, jsonify, request
@@ -21,7 +22,7 @@ def _check_api_key():
     if not required:
         return
     supplied = request.headers.get('X-API-Key') or request.args.get('api_key', '')
-    if supplied != required:
+    if not hmac.compare_digest(supplied, required):
         log.warning('Rejected /api/v1 request (bad API key) from %s', request.remote_addr)
         return jsonify({'error': 'invalid or missing API key'}), 401
 

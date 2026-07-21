@@ -200,11 +200,25 @@ async function loadMetricKeys() {
   } catch (e) { /* leave empty */ }
 }
 
+/* Hidden inputs must also be disabled: a hidden control that fails HTML
+   validation blocks form submission with no visible error ("an invalid form
+   control ... is not focusable"). Disabled controls are exempt and omitted
+   from the POST; the server treats absent fields as unset. */
+function isSectionShown(input) {
+  let node = input.parentElement;
+  while (node) {
+    if (node.style && node.style.display === 'none') return false;
+    node = node.parentElement;
+  }
+  return true;
+}
+
 function syncTriggerFields() {
   const mode = document.getElementById('trigger_mode').value;
   document.getElementById('threshold-fields').style.display = (mode === 'threshold') ? '' : 'none';
   document.getElementById('onchange-fields').style.display = (mode === 'on_change') ? '' : 'none';
   document.getElementById('cooldown-field').style.display = (mode === 'every_tick') ? 'none' : '';
+  syncDisabled();
 }
 
 function syncActionFields() {
@@ -212,6 +226,16 @@ function syncActionFields() {
   document.querySelectorAll('#action-config [data-action]').forEach(el => {
     el.style.display = el.dataset.action.split(' ').includes(type) ? '' : 'none';
   });
+  syncDisabled();
+}
+
+function syncDisabled() {
+  document.querySelectorAll('#threshold-fields, #onchange-fields, #cooldown-field, #action-config [data-action]')
+    .forEach(section => {
+      section.querySelectorAll('input, select, textarea').forEach(input => {
+        input.disabled = !isSectionShown(input);
+      });
+    });
 }
 
 document.getElementById('source_id').addEventListener('change', loadMetricKeys);

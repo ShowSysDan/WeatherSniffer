@@ -26,8 +26,10 @@ def redact_token(token):
     return '…' + token[-4:] if len(token) > 4 else '…'
 
 
+# Format specs are capped at 24 chars so a template can't request a
+# pathological padding width (e.g. {value:>2000000000}) and balloon memory.
 _PLACEHOLDER_RE = re.compile(
-    r'\{(value|metric_key|source_name|unit|observed_at|now)(:[^{}]*)?\}')
+    r'\{(value|metric_key|source_name|unit|observed_at|now)(:[^{}]{1,24})?\}')
 
 
 def render_template_str(template, ctx):
@@ -41,6 +43,8 @@ def render_template_str(template, ctx):
 
     def _sub(match):
         key, spec = match.group(1), match.group(2) or ''
+        if re.search(r'\d{5,}', spec):   # absurd padding width/precision
+            spec = ''
         try:
             return ('{0' + spec + '}').format(ctx.get(key, ''))
         except (ValueError, TypeError):

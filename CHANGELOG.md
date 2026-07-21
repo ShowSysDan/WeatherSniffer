@@ -5,6 +5,44 @@ All notable changes to WeatherSniffer are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-07-21
+
+### Security
+- **CSRF protection**: every state-changing request from a logged-in session
+  now requires a token (hidden `_csrf` form field, auto-stamped by JS, or
+  `X-CSRF-Token` header for the internal JSON API). The token is an HMAC of
+  the opaque session id — stateless, rotates on login.
+- Security headers on every response (`X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: same-origin`).
+- Request bodies capped at 1 MB (`MAX_CONTENT_LENGTH`).
+- Perry responses capped at 5 MB (streamed read) so a misbehaving endpoint
+  can't balloon memory.
+- Action templates reject absurd format-spec padding widths
+  (`{value:>999999999}` can no longer allocate a gigabyte string).
+- API-key comparison uses `hmac.compare_digest` (timing-safe).
+
+### Fixed
+- Rule form had the same hidden-invalid-control trap as 0.3.1's source form
+  (e.g. a bad TCP port left behind after switching the action type to webhook
+  silently blocked Save). Hidden trigger/action sections are now disabled so
+  they're exempt from browser validation and omitted from the POST.
+- Favicon 404 in the browser console (inline SVG icon).
+
+### Added
+- Janitor also purges expired `shared.app_sessions` rows hourly (they were
+  otherwise only deleted when the same sid was presented again, so abandoned
+  sessions accumulated forever).
+
+## [0.3.1] - 2026-07-21
+
+### Fixed
+- **Source edit form: Save did nothing for GUID-based sources.** The hidden
+  URL field rendered Python `None` as `value="None"`, which failed the
+  browser's `type="url"` validation; because the field was hidden the browser
+  blocked submission silently ("an invalid form control … is not focusable").
+  None values now render empty, and whichever of GUID/URL doesn't apply to
+  the selected type is disabled so it's exempt from validation.
+
 ## [0.3.0] - 2026-07-21
 
 ### Added

@@ -1,6 +1,6 @@
 # WeatherSniffer
 
-**Current version: 0.3.0**
+**Current version: 0.4.0**
 
 WeatherSniffer polls **Perry Weather** public widget/client endpoints (keyed by
 GUIDs — no authentication required), normalizes each response into flat
@@ -129,6 +129,12 @@ passwords verified with Werkzeug scrypt.
   ends the session mid-flight. If the shared DB is unreachable while auth is
   enabled, WeatherSniffer **fails closed**.
 - `/login` is rate-limited (15/min) and runs a dummy hash on unknown usernames.
+- All state-changing requests from a logged-in session require a **CSRF
+  token** (auto-stamped into forms and sent as `X-CSRF-Token` by the UI's JS;
+  derived from the session id, so it rotates on login). Responses carry
+  `X-Content-Type-Options`, `X-Frame-Options` and `Referrer-Policy` headers,
+  request bodies are capped at 1 MB, and the janitor purges expired
+  `shared.app_sessions` rows hourly.
 - Auth is **enabled when `AUTH_DB_SCHEMA` is set** (`shared`); leave it empty
   in dev to run without a login gate.
 

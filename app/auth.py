@@ -6,6 +6,8 @@ on the `is_app_user` cross-app flag; `role == 'admin'` or `is_app_admin`
 counts as admin. Auth is enabled when AUTH_DB_SCHEMA is set; with it unset
 (dev) the app runs without a login gate.
 """
+import hashlib
+import hmac
 import json
 import logging
 import re
@@ -186,6 +188,28 @@ def is_admin():
 
 
 # ---------------------------------------------------------------------------
+# CSRF (stateless): the token is an HMAC of the opaque session id, so it needs
+# no extra storage and rotates with the sid on every login. The sid lives in
+# an HttpOnly cookie, so a cross-site attacker can neither read it nor derive
+# the token.
+# ---------------------------------------------------------------------------
+
+def csrf_token():
+    sid = getattr(session, 'sid', None)
+    if not (auth_enabled() and sid and 'user_id' in session):
+        return ''
+    key = current_app.config['SECRET_KEY'].encode()
+    return hmac.new(key, sid.encode(), hashlib.sha256).hexdigest()
+
+
+def _csrf_ok():
+    supplied = (request.form.get('_csrf')
+                or request.headers.get('X-CSRF-Token') or '')
+    expected = csrf_token()
+    return bool(expected) and hmac.compare_digest(supplied, expected)
+
+
+# ---------------------------------------------------------------------------
 # Decorators
 # ---------------------------------------------------------------------------
 
@@ -286,6 +310,15 @@ def install_gate(app):
             if request.path.startswith('/api/'):
                 return {'error': 'authentication required'}, 401
             return redirect(url_for('auth.login', next=request.path))
+
+        # CSRF: every state-changing request from a logged-in session must
+        # carry the token (hidden form field or X-CSRF-Token header).
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and not _csrf_ok():
+            log.warning('Rejected %s %s (missing/bad CSRF token) actor=%s via=web',
+                        request.method, request.path, session.get('username'))
+            if request.path.startswith('/api/'):
+                return {'error': 'missing or invalid CSRF token'}, 403
+            abort(403)
 
         # Periodic re-check so a demotion/revocation takes effect mid-session.
         if datetime.utcnow().timestamp() - session.get('_role_checked_at', 0) < 300:
