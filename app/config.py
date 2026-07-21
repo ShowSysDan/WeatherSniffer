@@ -38,6 +38,9 @@ class BaseConfig:
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', '') in ('1', 'true', 'yes')
     SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN') or None
+    # Idle session lifetime; every authenticated request that touches the
+    # session slides it forward. Family default is 12 hours.
+    SESSION_LIFETIME_HOURS = int(os.environ.get('SESSION_LIFETIME_HOURS', '12'))
 
     WEB_HOST = os.environ.get('WEB_HOST', '0.0.0.0')
     WEB_PORT = int(os.environ.get('WEB_PORT', '7170'))

@@ -130,6 +130,10 @@ class Settings(Base):
     syslog_remote_host = Column(Text, nullable=True)
     syslog_remote_port = Column(Integer, nullable=False, default=514)
     syslog_facility = Column(Text, nullable=False, default='local0')
+    # Minimum severity forwarded to syslog (stderr/journal keeps log_level).
+    # Default WARNING: fetch failures, action failures, auth failures, 404s —
+    # not the per-fire INFO chatter of every_tick streaming rules.
+    syslog_min_level = Column(Text, nullable=False, default='WARNING')
     default_poll_interval_seconds = Column(Integer, nullable=False, default=60)
     default_retention_days = Column(Integer, nullable=True)   # blank = keep forever
     spot_default_base_url = Column(Text, nullable=True)

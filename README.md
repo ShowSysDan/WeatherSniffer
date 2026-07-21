@@ -1,6 +1,6 @@
 # WeatherSniffer
 
-**Current version: 0.6.0**
+**Current version: 0.7.0**
 
 WeatherSniffer polls **Perry Weather** public widget/client endpoints (keyed by
 GUIDs — no authentication required), normalizes each response into flat
@@ -148,6 +148,7 @@ passwords verified with Werkzeug scrypt.
 | `SECRET_KEY` | per-app Flask secret (flash/CSRF); need not match siblings |
 | `SESSION_COOKIE_SECURE` | `1` on HTTPS deployments |
 | `SESSION_COOKIE_DOMAIN` | shared parent domain for cross-subdomain SSO, else unset |
+| `SESSION_LIFETIME_HOURS` | idle session lifetime (default 12; activity slides it forward) |
 | `WEB_HOST` / `WEB_PORT` | bind (`0.0.0.0` / `7170`) |
 | `API_KEY` | optional key for `/api/v1`; unset = open on LAN |
 | `SYSLOG_ADDRESS`, `SYSLOG_FACILITY`, `LOG_LEVEL` | initial syslog seeds (also editable in Settings) |
@@ -344,8 +345,17 @@ point the remote target at a **FetchLog** host in Settings.
 
 What gets logged: service start + version; poller start/stop; source fetch
 failures; **rule fires** (rule name, metric, value, target, outcome); action
-failures; auth failures; retention purges. UI changes carry `actor=<username>`
-and engine fires carry `rule=<name> via=engine`, echoing Leash's tagging.
+failures; auth failures; session rejections (with the reason — expired,
+logged out elsewhere, access revoked); 404s and server errors; retention
+purges. UI changes carry `actor=<username>` and engine fires carry
+`rule=<name> via=engine`, echoing Leash's tagging.
+
+**Syslog is narrowed by default**: only records at or above the
+**Syslog minimum severity** setting (default `WARNING` — failures, auth
+problems, 404s/500s) are forwarded to the local/remote syslog targets, so
+streaming rules don't flood FetchLog with one INFO line per fire. Set it to
+`INFO` in Settings to forward everything. The complete stream always goes to
+stderr (`journalctl -u weathersniffer`) at the ordinary log level.
 
 ## Retention
 

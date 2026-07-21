@@ -5,6 +5,29 @@ All notable changes to WeatherSniffer are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-21
+
+### Fixed
+- **Spontaneous logouts**: the hourly expired-session purge compared the
+  naive-UTC `expires_at` column against `CURRENT_TIMESTAMP`, which Postgres
+  resolves in the database's timezone — on a DB whose timezone is ahead of
+  UTC this deleted LIVE sessions hours early. The purge now compares against
+  `now() AT TIME ZONE 'utc'`, matching how the app family writes expiries.
+
+### Added
+- **Session diagnostics**: every rejected session is logged with the reason —
+  `expired` (idle past lifetime), `no-row` (logged out from another family
+  app or purged), or access revoked in the shared directory — so an
+  unexpected logout is explained in the logs.
+- `SESSION_LIFETIME_HOURS` env var (default 12, the family standard) to tune
+  the idle session lifetime.
+- **Syslog minimum severity** setting (default `WARNING`): only records at or
+  above it are forwarded to the local/remote syslog targets — failures, auth
+  problems, 404s/500s — so streaming rules no longer flood FetchLog with one
+  INFO line per fire. stderr/journalctl keeps the full stream. 404s and
+  unhandled server errors are now logged (WARNING/ERROR) with path + remote,
+  and a proper 500 page was added.
+
 ## [0.6.0] - 2026-07-21
 
 ### Added

@@ -54,6 +54,11 @@ def apply_settings(settings):
     # Tag messages so FetchLog/rsyslog parse a clean RFC 3164 ident.
     formatter = logging.Formatter(
         'weathersniffer[%(process)d]: %(name)s %(levelname)s %(message)s')
+    # Syslog stays narrow (default WARNING: failures, auth problems, 404s);
+    # the full log_level stream still goes to stderr/journalctl.
+    syslog_level = getattr(logging,
+                           (getattr(settings, 'syslog_min_level', None) or 'WARNING').upper(),
+                           logging.WARNING)
 
     if settings.syslog_local_enabled:
         sock = _local_syslog_socket(settings.syslog_local_address)
@@ -61,6 +66,7 @@ def apply_settings(settings):
             try:
                 handler = logging.handlers.SysLogHandler(address=sock, facility=facility)
                 handler.setFormatter(formatter)
+                handler.setLevel(syslog_level)
                 log.addHandler(handler)
                 _syslog_handlers.append(handler)
             except OSError as exc:
@@ -76,6 +82,7 @@ def apply_settings(settings):
                 facility=facility,
             )
             handler.setFormatter(formatter)
+            handler.setLevel(syslog_level)
             log.addHandler(handler)
             _syslog_handlers.append(handler)
         except OSError as exc:
