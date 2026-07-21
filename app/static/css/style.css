@@ -106,6 +106,13 @@ td.num, .mono { font-family: var(--mono); }
 .metric-card .key { font-size: 0.72rem; color: var(--text-dim); font-family: var(--mono); word-break: break-all; }
 .metric-card .val { font-size: 1.15rem; font-weight: 600; }
 .metric-card .val small { color: var(--text-dim); font-size: 0.65em; font-weight: 400; }
+.metric-card .src { font-size: 0.68rem; color: var(--text-dim); margin-top: 0.15rem; }
+
+/* Master readout: the canonical one-value-per-field weather strip */
+.master-readout { border-color: var(--accent); }
+.master-readout .metric-card .key { color: var(--accent); font-family: inherit; font-size: 0.78rem; }
+.master-readout .metric-card .val { font-size: 1.35rem; }
+.master-readout .metric-card.stale { opacity: 0.55; border-style: dashed; }
 
 /* --- Forms ---------------------------------------------------------------- */
 form.stack { max-width: 640px; }

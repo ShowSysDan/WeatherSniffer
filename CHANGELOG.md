@@ -5,6 +5,19 @@ All notable changes to WeatherSniffer are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-21
+
+### Added
+- **Master weather readout**: sources reporting the same measurement are
+  automatically merged into one canonical value per field (temperature, WBGT,
+  humidity, wind, rain, lightning hold, PM2.5, …), with known synonyms
+  resolved (`relativeHumidity`→humidity, `wetBulbGlobalTemp`→WBGT,
+  `rain1Hr`→rain-1hr, `heatIndex`→feels-like). Per field the freshest value
+  from a healthy source wins; cards show source attribution and data age, and
+  values older than 15 minutes (or from a failing source) are flagged stale.
+  Rendered at the top of the dashboard and served at `GET /api/v1/weather`.
+  Canonical fields/synonyms are defined in `app/weather.py`.
+
 ## [0.2.0] - 2026-07-20
 
 ### Added
