@@ -8,6 +8,7 @@ from flask import Blueprint, current_app, jsonify, request
 
 from app.db import SessionLocal
 from app.models import MetricCurrent, Source
+from app.weather import build_master_readout
 
 log = logging.getLogger('weathersniffer.api')
 
@@ -54,6 +55,17 @@ def metric(metric_key):
         return jsonify({'error': f'no such metric: {metric_key}'}), 404
     source = db.get(Source, m.source_id)
     return jsonify(_metric_json(m, source))
+
+
+@bp.route('/weather')
+def weather():
+    """The master readout: one canonical value per weather field, deduped
+    across sources (freshest healthy value wins, synonyms resolved)."""
+    db = SessionLocal()
+    readout = build_master_readout(db)
+    for f in readout:
+        f['observed_at'] = f['observed_at'].isoformat() if f['observed_at'] else None
+    return jsonify({'weather': readout})
 
 
 @bp.route('/sources')

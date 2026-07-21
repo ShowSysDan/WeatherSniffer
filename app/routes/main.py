@@ -14,6 +14,7 @@ from app.engine import poller
 from app.logging_setup import apply_settings
 from app.models import (ACTION_TYPES, OPERATORS, SOURCE_TYPES, TRIGGER_MODES,
                         ActionLog, MetricCurrent, Rule, Source, get_settings)
+from app.weather import build_master_readout
 
 log = logging.getLogger('weathersniffer.web')
 
@@ -43,8 +44,9 @@ def index():
     recent_fires = (db.query(ActionLog)
                     .order_by(ActionLog.fired_at.desc())
                     .limit(15).all())
+    readout = build_master_readout(db)
     return render_template('dashboard.html', sources=sources, metrics=metrics,
-                           recent_fires=recent_fires)
+                           recent_fires=recent_fires, readout=readout)
 
 
 # ---------------------------------------------------------------------------

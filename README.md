@@ -1,6 +1,6 @@
 # WeatherSniffer
 
-**Current version: 0.2.0**
+**Current version: 0.3.0**
 
 WeatherSniffer polls **Perry Weather** public widget/client endpoints (keyed by
 GUIDs — no authentication required), normalizes each response into flat
@@ -182,6 +182,29 @@ clear** ticked, so one rule covers both the hold starting and the all-clear —
 and because it's edge-triggered, mid-hold resets to 600 extend the hold
 without re-firing.
 
+## Master weather readout
+
+Different source types report the same physical measurement — `conditions`
+and `observations_v2` both carry `ambientTemperature`, the hardware-station
+endpoint calls humidity `relativeHumidity` and WBGT `wetBulbGlobalTemp`, etc.
+WeatherSniffer automatically merges them into one **standard weather readout**
+shown at the top of the dashboard and served at `GET /api/v1/weather`:
+
+- Metrics are grouped by **canonical field** (temperature, WBGT, humidity,
+  wind, rain, lightning hold, PM2.5, …) with known synonyms resolved
+  (`relativeHumidity`→humidity, `wetBulbGlobalTemp`→WBGT,
+  `rain1Hr`→rain-1hr, `heatIndex`→feels-like).
+- Per field, the value from a **healthy source with the freshest
+  observation time wins**; each card shows which source it came from and how
+  old it is. Values older than 15 minutes (or from a failing source) are
+  flagged **stale** (⚠, dimmed).
+- Every source's full metric set still appears in its own panel below — the
+  readout is a view, not a replacement.
+
+The canonical field list and synonym map live in `app/weather.py`
+(`CANONICAL_FIELDS`) — add a tuple there to teach the readout a new field or
+alias.
+
 **Stale-data guard:** every source also maintains a synthetic metric
 `<slug>._data_age_seconds` — seconds since the feed last produced fresh data
 (the response's `observationTime` where one exists, otherwise the last
@@ -248,7 +271,7 @@ state so behavior after a change is predictable.
 
 | page | what it does |
 |---|---|
-| `/` | Dashboard: current metrics grouped by source, poll status, recent fires; auto-refreshes every 15 s |
+| `/` | Dashboard: **master weather readout** (one canonical value per field, deduped across sources), then current metrics grouped by source, poll status, recent fires; auto-refreshes every 15 s |
 | `/sources` | List sources (all users); add / edit / enable / disable / delete and **Test fetch** are **admin-only** (poll intervals live here) |
 | `/rules` | List / add / edit / enable / disable / delete rules; metric dropdown from discovered metrics; **Test fire** |
 | `/log` | Action log: filterable (rule, outcome), CSV export |
@@ -278,6 +301,8 @@ for open access on a trusted LAN.
 
 - `GET /api/v1/metrics` — all current metrics (with source, unit, observed_at)
 - `GET /api/v1/metrics/<metric_key>` — one current metric
+- `GET /api/v1/weather` — the **master readout**: one canonical value per
+  weather field, deduped across sources (see below)
 - `GET /api/v1/sources` — sources + last poll status
 
 ```bash

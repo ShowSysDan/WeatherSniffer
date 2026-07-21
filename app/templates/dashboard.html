@@ -3,6 +3,30 @@
 {% block content %}
 <h1>Dashboard</h1>
 
+{% if readout %}
+<div class="panel master-readout">
+  <h2>Current weather <span class="muted" style="font-size:0.75rem;font-weight:400">— best value per field across all sources</span></h2>
+  <div class="metric-grid">
+    {% for f in readout %}
+    <div class="metric-card {% if f.stale %}stale{% endif %}" title="{{ f.metric_key }}">
+      <div class="key">{{ f.label }}{% if f.stale %} ⚠{% endif %}</div>
+      <div class="val">
+        {%- if f.value_text in ('true', 'false') -%}
+          {{ 'yes' if f.value_text == 'true' else 'no' }}
+        {%- elif f.value_num is not none -%}
+          {{ '%g' % f.value_num }}{% if f.unit %} <small>{{ f.unit }}</small>{% endif %}
+        {%- else -%}
+          {{ f.value_text or '—' }}
+        {%- endif -%}
+      </div>
+      <div class="src">{{ f.source }}
+        {%- if f.age_seconds is not none %} · {% if f.age_seconds < 90 %}{{ f.age_seconds | int }}s{% else %}{{ (f.age_seconds // 60) | int }}m{% endif %} ago{% endif %}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 {% if not sources %}
 <div class="panel">
   <p class="muted">No sources yet.
