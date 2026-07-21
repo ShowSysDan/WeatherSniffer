@@ -1,6 +1,6 @@
 # WeatherSniffer
 
-**Current version: 0.4.0**
+**Current version: 0.5.0**
 
 WeatherSniffer polls **Perry Weather** public widget/client endpoints (keyed by
 GUIDs — no authentication required), normalizes each response into flat
@@ -211,6 +211,16 @@ The canonical field list and synonym map live in `app/weather.py`
 (`CANONICAL_FIELDS`) — add a tuple there to teach the readout a new field or
 alias.
 
+**Rules can use the readout as their input.** In the rule editor, pick
+**★ Current weather (aggregated)** as the source and a canonical field
+(`weather.wgbt`, `weather.lightningDelay`, …) as the metric. The rule then
+follows whichever source currently wins that field: it is evaluated on the
+winning source's poll cadence and **fails over automatically** when that feed
+dies — no rule edits needed. This is the recommended binding for anything
+that should survive a station outage (heat thresholds, Spot streams).
+Numbers on the dashboard and in the action log display rounded to 1 decimal;
+storage and rule comparisons keep full precision.
+
 **Stale-data guard:** every source also maintains a synthetic metric
 `<slug>._data_age_seconds` — seconds since the feed last produced fresh data
 (the response's `observationTime` where one exists, otherwise the last
@@ -232,7 +242,11 @@ server's local timezone.
    the metric list.
 2. **Create the rule.** Rules → New:
    - **Name** it (e.g. "Lightning delay active → notify Q-SYS").
-   - **Metric**: choose from the dropdown (e.g. `dpac_lightning.lightningDelay`).
+   - **Source**: a specific Perry source, or **★ Current weather (aggregated)**
+     to bind to the deduped readout (freshest healthy source wins, automatic
+     failover).
+   - **Metric**: choose from the dropdown (e.g. `dpac_lightning.lightningDelay`,
+     or a canonical field like `weather.wgbt` for aggregated rules).
    - **Trigger mode**:
      - **Threshold** — fires when the metric crosses a value. Pick an
        **operator** (`>`, `>=`, `<`, `<=`, `==`, `!=`, is-true, is-false) and a

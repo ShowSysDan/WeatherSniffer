@@ -34,7 +34,7 @@
     <td class="mono">{{ e.fired_at | localtime }}</td>
     <td>{{ e.rule_name }}</td>
     <td class="mono">{{ e.metric_key }}</td>
-    <td class="num">{{ '%g' % e.trigger_value_num if e.trigger_value_num is not none else (e.trigger_value_text or '—') }}</td>
+    <td class="num">{{ e.trigger_value_num | num1 if e.trigger_value_num is not none else (e.trigger_value_text or '—') }}</td>
     <td>{{ e.action_type }}</td>
     <td class="mono">{{ e.target or '—' }}</td>
     <td class="{{ 'status-ok' if e.outcome == 'success' else 'status-error' }}">{{ e.outcome }}</td>

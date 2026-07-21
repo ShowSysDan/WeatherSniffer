@@ -12,11 +12,15 @@
          placeholder="e.g. Lightning delay active → notify Q-SYS">
 
   <label for="source_id">Source</label>
+  {% set selected_source = f.get('source_id', ('master' if rule and rule.source_id is none else (rule.source_id if rule else ''))) | string %}
   <select id="source_id" name="source_id">
+    <option value="master" {% if selected_source == 'master' %}selected{% endif %}>★ Current weather (aggregated)</option>
     {% for s in sources %}
-    <option value="{{ s.id }}" {% if f.get('source_id', rule.source_id if rule else '')|string == s.id|string %}selected{% endif %}>{{ s.name }} ({{ s.slug }})</option>
+    <option value="{{ s.id }}" {% if selected_source == s.id|string %}selected{% endif %}>{{ s.name }} ({{ s.slug }})</option>
     {% endfor %}
   </select>
+  <p class="help">“Current weather” binds the rule to the aggregated readout: it always uses
+     the freshest healthy source for that field and fails over automatically.</p>
   {% if not sources %}<p class="help status-error">No sources exist yet — add one first.</p>{% endif %}
 
   <label for="metric_key">Metric</label>
@@ -186,14 +190,18 @@ async function loadMetricKeys() {
   const current = sel.dataset.current;
   sel.innerHTML = '';
   if (!sourceId) return;
+  const url = (sourceId === 'master')
+    ? '/api/weather/fields'
+    : '/api/sources/' + sourceId + '/metric_keys';
   try {
-    const resp = await fetch('/api/sources/' + sourceId + '/metric_keys');
+    const resp = await fetch(url);
     const data = await resp.json();
     let keys = data.metric_keys || [];
     if (current && !keys.includes(current)) keys = [current].concat(keys);
     for (const k of keys) {
       const opt = document.createElement('option');
-      opt.value = k; opt.textContent = k;
+      opt.value = k;
+      opt.textContent = (data.labels && data.labels[k]) ? k + ' — ' + data.labels[k] : k;
       if (k === current) opt.selected = true;
       sel.appendChild(opt);
     }

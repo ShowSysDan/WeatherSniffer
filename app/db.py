@@ -78,23 +78,24 @@ def init_db(config):
         _ensure_app_sessions()
 
 
-# Columns added after a table first shipped. create_all only creates whole
-# tables, so additive column changes are applied here (idempotent).
-_ADDITIVE_COLUMNS = (
-    ('sources', 'last_success_at', 'TIMESTAMPTZ'),
+# Schema changes after a table first shipped. create_all only creates whole
+# tables, so additive changes are applied here (all idempotent).
+_ADDITIVE_STATEMENTS = (
+    'ALTER TABLE sources ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ',
+    # 0.5.0: master rules (aggregated Current-weather input) have NULL source_id
+    'ALTER TABLE rules ALTER COLUMN source_id DROP NOT NULL',
 )
 
 
 def _apply_additive_migrations():
     with engine.connect() as conn:
-        for table, column, ddl_type in _ADDITIVE_COLUMNS:
+        for stmt in _ADDITIVE_STATEMENTS:
             try:
-                conn.execute(text(
-                    f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {ddl_type}'))
+                conn.execute(text(stmt))
                 conn.commit()
             except Exception as exc:
                 conn.rollback()
-                log.warning('Could not add column %s.%s: %s', table, column, exc)
+                log.warning('Migration failed (%s): %s', stmt, exc)
 
 
 def _ensure_app_sessions():

@@ -101,21 +101,44 @@ def source_metric_keys(source_id):
     return jsonify({'metric_keys': [m.metric_key for m in rows]})
 
 
+@bp.route('/weather/fields')
+def weather_fields():
+    """Canonical Current-weather fields for the rule editor's dropdown
+    (only fields at least one source currently provides)."""
+    from app.weather import build_master_readout
+    db = SessionLocal()
+    readout = build_master_readout(db)
+    return jsonify({'metric_keys': [f'weather.{f["field"]}' for f in readout],
+                    'labels': {f'weather.{f["field"]}': f['label'] for f in readout}})
+
+
 @bp.route('/rules/<int:rule_id>/test_fire', methods=['POST'])
 def rule_test_fire(rule_id):
     """Dispatch the rule's action once, right now, using the metric's current
     value. Logged to the action log like any real fire."""
+    from types import SimpleNamespace
+
     db = SessionLocal()
     rule = db.get(Rule, rule_id) or abort(404)
-    source = db.get(Source, rule.source_id)
-    metric = (db.query(MetricCurrent)
-              .filter_by(source_id=rule.source_id, metric_key=rule.metric_key)
-              .first())
-    value_num = metric.value_num if metric else None
-    value_text = metric.value_text if metric else None
-    unit = metric.unit if metric else None
-    observed_at = metric.observed_at if metric else None
-    if metric is None:
+    value_num = value_text = unit = observed_at = None
+    if rule.source_id is None:
+        # Master rule: pull the value from the aggregated readout.
+        from app.weather import build_master_readout
+        entry = next((f for f in build_master_readout(db)
+                      if f'weather.{f["field"]}' == rule.metric_key), None)
+        source = SimpleNamespace(name=entry['source'] if entry else 'Current weather')
+        if entry:
+            value_num, value_text = entry['value_num'], entry['value_text']
+            unit, observed_at = entry['unit'], entry['observed_at']
+    else:
+        source = db.get(Source, rule.source_id)
+        metric = (db.query(MetricCurrent)
+                  .filter_by(source_id=rule.source_id, metric_key=rule.metric_key)
+                  .first())
+        if metric:
+            value_num, value_text = metric.value_num, metric.value_text
+            unit, observed_at = metric.unit, metric.observed_at
+    if value_num is None and value_text is None:
         log.info('Test fire with no current value for metric=%s (sending nulls)', rule.metric_key)
 
     entry = actions.fire(db, rule, source, value_num, value_text,

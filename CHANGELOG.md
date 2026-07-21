@@ -5,6 +5,23 @@ All notable changes to WeatherSniffer are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-07-21
+
+### Added
+- **Rules can target the aggregated Current-weather readout**: pick
+  “★ Current weather (aggregated)” as the rule's source and a canonical field
+  (`weather.wgbt`, `weather.lightningDelay`, …) as the metric. The rule is
+  evaluated on the winning source's poll cadence and fails over automatically
+  when that feed dies or goes stale — verified live (disabling the winning
+  source seamlessly switched a Spot stream to the next-best feed).
+  `GET /api/weather/fields` feeds the rule editor's canonical-field dropdown.
+  (Schema: `rules.source_id` is now nullable; NULL = aggregated rule.)
+
+### Changed
+- All numeric values on the dashboard and in the action log display rounded
+  to 1 decimal place (91.0 renders as 91). Display-only: storage, rule
+  evaluation, action payloads and CSV export keep full precision.
+
 ## [0.4.0] - 2026-07-21
 
 ### Security

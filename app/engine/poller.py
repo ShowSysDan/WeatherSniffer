@@ -191,5 +191,6 @@ def poll_once(db, source):
     db.commit()
 
     rules_engine.evaluate_source_rules(db, source, touched)
+    rules_engine.evaluate_master_rules(db, source)
     db.commit()
     return touched, raw

@@ -59,6 +59,14 @@ def create_app():
         resp.headers.setdefault('Referrer-Policy', 'same-origin')
         return resp
 
+    @app.template_filter('num1')
+    def _num1(v):
+        """Display numbers rounded to 1 decimal (91.0 renders as 91).
+        Display-only — storage and rule evaluation keep full precision."""
+        if v is None:
+            return '—'
+        return '%g' % round(v, 1)
+
     @app.template_filter('localtime')
     def _localtime(dt, fmt='%Y-%m-%d %H:%M:%S'):
         """UTC storage, server-local display (like Spot)."""

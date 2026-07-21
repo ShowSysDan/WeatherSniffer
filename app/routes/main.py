@@ -14,7 +14,9 @@ from app.engine import poller
 from app.logging_setup import apply_settings
 from app.models import (ACTION_TYPES, OPERATORS, SOURCE_TYPES, TRIGGER_MODES,
                         ActionLog, MetricCurrent, Rule, Source, get_settings)
-from app.weather import build_master_readout
+from app.weather import CANONICAL_FIELDS, build_master_readout
+
+_CANONICAL_METRIC_KEYS = {f'weather.{canon}' for canon, _label, _tails in CANONICAL_FIELDS}
 
 log = logging.getLogger('weathersniffer.web')
 
@@ -238,15 +240,21 @@ def _rule_from_form(db, rule=None):
     name = form.get('name', '').strip()
     if not name:
         raise ValueError('Name is required.')
-    try:
-        source_id = int(form.get('source_id', ''))
-    except ValueError:
-        raise ValueError('Pick a source.')
-    if not db.get(Source, source_id):
-        raise ValueError('Pick a source.')
+    raw_source = form.get('source_id', '')
     metric_key = form.get('metric_key', '').strip()
     if not metric_key:
         raise ValueError('Pick a metric.')
+    if raw_source == 'master':
+        source_id = None                 # aggregated Current-weather input
+        if metric_key not in _CANONICAL_METRIC_KEYS:
+            raise ValueError('Pick a Current-weather field.')
+    else:
+        try:
+            source_id = int(raw_source)
+        except ValueError:
+            raise ValueError('Pick a source.')
+        if not db.get(Source, source_id):
+            raise ValueError('Pick a source.')
     trigger_mode = form.get('trigger_mode', '')
     if trigger_mode not in TRIGGER_MODES:
         raise ValueError('Invalid trigger mode.')

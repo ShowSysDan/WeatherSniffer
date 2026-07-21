@@ -58,6 +58,7 @@
     <li><strong>Every tick</strong> fires on every poll — use this for continuous streaming to Spot.</li>
     <li><strong>Cooldown</strong>: after firing, wait this many seconds before firing again.</li>
     <li>Templates accept <code>{value}</code>, <code>{value:.1f}</code>, <code>{metric_key}</code>, <code>{source_name}</code>, <code>{unit}</code>, <code>{observed_at}</code>, <code>{now}</code>.</li>
+    <li><strong>Aggregated rules:</strong> pick <em>★ Current weather (aggregated)</em> as the source to bind a rule to the deduped readout (<code>weather.wgbt</code>, …). The rule follows whichever source currently wins that field and fails over automatically if that feed dies.</li>
     <li><strong>Stale-data guard:</strong> every source maintains <code>&lt;slug&gt;._data_age_seconds</code> — seconds since the feed last produced fresh data. It keeps counting up if the endpoint dies or freezes, so a rule like <code>_data_age_seconds &gt; 600</code> alerts on a dead feed.</li>
     <li><strong>Lightning:</strong> <code>lightningDelay</code> is the hold countdown in <em>seconds</em> — a strike (re)starts the 10-minute hold at 600 and it counts down; 0 means all clear. Use <code>&gt; 0</code> with <em>fire on clear</em> to catch both the hold start and the all-clear (mid-hold resets to 600 won't re-fire).</li>
   </ul>
