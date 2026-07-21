@@ -42,6 +42,9 @@ class BaseConfig:
     WEB_HOST = os.environ.get('WEB_HOST', '0.0.0.0')
     WEB_PORT = int(os.environ.get('WEB_PORT', '7170'))
 
+    # Largest request body the app will accept (forms/JSON are all tiny).
+    MAX_CONTENT_LENGTH = 1 * 1024 * 1024
+
     # Optional key guarding the /api/v1 read API. Unset = open on a trusted LAN.
     API_KEY = os.environ.get('API_KEY', '')
 

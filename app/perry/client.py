@@ -14,6 +14,7 @@ from app.perry.endpoints import url_for_source
 log = logging.getLogger('weathersniffer.poller')
 
 TIMEOUT_SECONDS = 10
+MAX_RESPONSE_BYTES = 5 * 1024 * 1024   # a weather payload is a few KB; cap the rest
 
 _session = requests.Session()
 _session.headers.update({
@@ -29,9 +30,13 @@ def fetch(source_type, guid=None, url=None):
     dict, list, or a bare number. Raises on network/HTTP/parse errors.
     """
     target = url_for_source(source_type, guid=guid, url=url)
-    resp = _session.get(target, timeout=TIMEOUT_SECONDS)
+    resp = _session.get(target, timeout=TIMEOUT_SECONDS, stream=True)
     resp.raise_for_status()
-    raw = resp.text.strip()
+    body = resp.raw.read(MAX_RESPONSE_BYTES + 1, decode_content=True)
+    if len(body) > MAX_RESPONSE_BYTES:
+        resp.close()
+        raise ValueError(f'response larger than {MAX_RESPONSE_BYTES} bytes')
+    raw = body.decode(resp.encoding or 'utf-8', errors='replace').strip()
     if not raw:
         raise ValueError('empty response body')
     try:

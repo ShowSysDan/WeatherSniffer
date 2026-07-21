@@ -49,7 +49,15 @@ def create_app():
             'auth_enabled': bool(app.config.get('AUTH_DB_SCHEMA')),
             'current_user': dict(flask_session) if flask_session else {},
             'is_admin': auth.is_admin() if app.config.get('AUTH_DB_SCHEMA') else True,
+            'csrf_token': auth.csrf_token,
         }
+
+    @app.after_request
+    def _security_headers(resp):
+        resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        resp.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        resp.headers.setdefault('Referrer-Policy', 'same-origin')
+        return resp
 
     @app.template_filter('localtime')
     def _localtime(dt, fmt='%Y-%m-%d %H:%M:%S'):

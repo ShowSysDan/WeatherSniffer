@@ -1,12 +1,12 @@
 """Retention janitor: purges readings and action_log rows older than
-`default_retention_days` (Settings). Blank retention = keep forever.
+`default_retention_days` (Settings), plus expired shared-SSO session rows.
 
 Runs hourly as an APScheduler job in the same single process.
 """
 import logging
 from datetime import datetime, timedelta, timezone
 
-from app.db import SessionLocal
+from app.db import SessionLocal, get_db
 from app.models import ActionLog, Reading, get_settings
 
 log = logging.getLogger('weathersniffer.db')
@@ -19,9 +19,28 @@ def init(app):
     _app = app
 
 
+def _purge_expired_sessions():
+    """Expired shared.app_sessions rows are otherwise only deleted when that
+    exact sid is presented again — abandoned sessions would accumulate
+    forever. Expired rows are dead in every app, so purging is safe."""
+    db = get_db()
+    try:
+        cur = db.execute('DELETE FROM app_sessions WHERE expires_at < CURRENT_TIMESTAMP')
+        db.commit()
+        if cur.rowcount:
+            log.info('Retention purge: %d expired session row(s) removed', cur.rowcount)
+    finally:
+        db.close()
+
+
 def run():
     with _app.app_context():
         try:
+            if _app.config.get('AUTH_DB_SCHEMA'):
+                try:
+                    _purge_expired_sessions()
+                except Exception:
+                    log.exception('Expired-session purge failed')
             db = SessionLocal()
             settings = get_settings(db)
             days = settings.default_retention_days
