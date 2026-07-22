@@ -2,6 +2,7 @@
 dashboard refresh, test fetch, metric-key discovery, test fire.
 """
 import logging
+from datetime import timedelta, timezone
 
 from flask import Blueprint, abort, jsonify, request, session
 
@@ -9,7 +10,7 @@ from app.__version__ import __version__
 from app.auth import admin_required
 from app.db import SessionLocal
 from app.engine import actions, poller
-from app.models import ActionLog, MetricCurrent, Rule, Source
+from app.models import ActionLog, MetricCurrent, Reading, Rule, Source, utcnow
 from app.perry import client, normalize
 
 log = logging.getLogger('weathersniffer.api')
@@ -57,6 +58,92 @@ def dashboard():
             'action_type': f.action_type, 'target': f.target,
             'outcome': f.outcome, 'error': f.error,
         } for f in fires],
+    })
+
+
+def _local_display(dt):
+    """UTC storage → server-local display string, matching the `localtime`
+    Jinja filter so popover timestamps line up with the rest of the UI."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone().strftime('%Y-%m-%d %H:%M:%S')
+
+
+# Guard against pathological scans on very short poll intervals / long windows.
+_HISTORY_ROW_CAP = 50000
+
+
+@bp.route('/history')
+def history():
+    """Value history for one metric on one source, collapsed to the points
+    where the value actually changed, over the past N days (default 3).
+
+    Powers the dashboard's click-a-card history popover. `readings` is the
+    app's append-only per-poll log (retention-pruned); consecutive identical
+    values are collapsed here so the caller sees only the changes.
+    """
+    try:
+        source_id = int(request.args.get('source_id', ''))
+    except (TypeError, ValueError):
+        abort(400)
+    metric_key = (request.args.get('metric_key') or '').strip()
+    if not metric_key:
+        abort(400)
+    try:
+        days = int(request.args.get('days', 3))
+    except (TypeError, ValueError):
+        days = 3
+    days = max(1, min(days, 30))
+
+    db = SessionLocal()
+    source = db.get(Source, source_id) or abort(404)
+    current = (db.query(MetricCurrent)
+               .filter_by(source_id=source_id, metric_key=metric_key)
+               .first())
+
+    since = utcnow() - timedelta(days=days)
+    # Newest-first with a cap (uses ix_readings_source_fetched), then reversed
+    # to chronological order for change detection and the sparkline.
+    rows = (db.query(Reading)
+            .filter(Reading.source_id == source_id,
+                    Reading.metric_key == metric_key,
+                    Reading.fetched_at >= since)
+            .order_by(Reading.fetched_at.desc())
+            .limit(_HISTORY_ROW_CAP)
+            .all())
+    rows.reverse()
+
+    changes = []
+    _sentinel = object()
+    last = _sentinel
+    for r in rows:
+        val = (r.value_num, r.value_text)
+        if val == last:
+            continue
+        last = val
+        when = r.observed_at or r.fetched_at
+        changes.append({
+            'at': when.isoformat() if when else None,
+            'at_display': _local_display(when),
+            'value_num': r.value_num,
+            'value_text': r.value_text,
+        })
+
+    nums = [c['value_num'] for c in changes if c['value_num'] is not None]
+    return jsonify({
+        'source_id': source_id,
+        'source': source.name,
+        'metric_key': metric_key,
+        'unit': current.unit if current else None,
+        'days': days,
+        'poll_count': len(rows),
+        'capped': len(rows) >= _HISTORY_ROW_CAP,
+        'change_count': len(changes),
+        'min': min(nums) if nums else None,
+        'max': max(nums) if nums else None,
+        'changes': changes,
     })
 
 

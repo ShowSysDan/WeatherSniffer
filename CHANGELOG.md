@@ -5,6 +5,23 @@ All notable changes to WeatherSniffer are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-07-22
+
+### Added
+- **Click a metric card for its history**: every card on the dashboard — both
+  the master Current-weather readout and each source's own metrics — is now
+  clickable and opens a popover showing that metric's **value changes over the
+  past 3 days**. The popover collapses the per-poll `readings` log to just the
+  points where the value actually changed, with a summary (change count, poll
+  count, min/max), a step-line sparkline for numeric metrics, and a
+  newest-first table of each change with its server-local timestamp. No new
+  storage — this is a view over the history WeatherSniffer already keeps
+  (subject to the retention window).
+- New internal endpoint `GET /api/history?source_id=&metric_key=&days=`
+  (session-gated, default 3 days, capped at 30) powers the popover. The
+  dashboard auto-refresh now pauses while the popover is open so it doesn't
+  close under you.
+
 ## [0.7.0] - 2026-07-21
 
 ### Fixed

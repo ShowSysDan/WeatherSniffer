@@ -108,6 +108,9 @@ td.num, .mono { font-family: var(--mono); }
 .metric-card .val small { color: var(--text-dim); font-size: 0.65em; font-weight: 400; }
 .metric-card .src { font-size: 0.68rem; color: var(--text-dim); margin-top: 0.15rem; }
 
+.metric-card.has-history { cursor: pointer; transition: border-color 0.12s, background 0.12s; }
+.metric-card.has-history:hover { border-color: var(--accent); background: #262d38; }
+
 /* Master readout: the canonical one-value-per-field weather strip */
 .master-readout { border-color: var(--accent); }
 .master-readout .metric-card .key { color: var(--accent); font-family: inherit; font-size: 0.78rem; }
@@ -170,6 +173,45 @@ pre.output {
 /* --- Login ------------------------------------------------------------------- */
 .login-box { max-width: 360px; margin: 8vh auto; }
 .login-box .brand { text-align: center; font-size: 1.5rem; color: var(--accent); font-weight: 700; margin-bottom: 1rem; }
+
+/* --- History popover (click a metric card) -------------------------------------- */
+.ws-modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 6vh 1rem 1rem;
+  overflow-y: auto;
+}
+.ws-modal-overlay[hidden] { display: none; }
+.ws-modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 100%; max-width: 640px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.ws-modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.ws-modal-title { font-size: 1.05rem; font-weight: 600; color: var(--accent); }
+.ws-modal-sub { font-size: 0.75rem; word-break: break-all; }
+.ws-modal-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 1.4rem; line-height: 1; padding: 0 0.2rem; cursor: pointer;
+}
+.ws-modal-close:hover { color: var(--accent); }
+.ws-modal-body { padding: 0.8rem 1rem 1rem; }
+.hm-summary { font-size: 0.82rem; margin: 0 0 0.5rem; }
+.hm-table { max-height: 40vh; overflow-y: auto; }
+svg.spark {
+  width: 100%; height: 90px;
+  background: #0e1116; border: 1px solid var(--border); border-radius: 6px;
+  margin-bottom: 0.8rem;
+}
+svg.spark path { stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 
 /* --- Misc ---------------------------------------------------------------------- */
 .muted { color: var(--text-dim); }

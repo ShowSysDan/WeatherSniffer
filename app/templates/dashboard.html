@@ -8,7 +8,10 @@
   <h2>Current weather <span class="muted" style="font-size:0.75rem;font-weight:400">— best value per field across all sources</span></h2>
   <div class="metric-grid">
     {% for f in readout %}
-    <div class="metric-card {% if f.stale %}stale{% endif %}" title="{{ f.metric_key }}">
+    <div class="metric-card has-history {% if f.stale %}stale{% endif %}"
+         title="{{ f.metric_key }} — click for history"
+         data-source-id="{{ f.source_id }}" data-metric-key="{{ f.metric_key }}"
+         data-label="{{ f.label }}">
       <div class="key">{{ f.label }}{% if f.stale %} ⚠{% endif %}</div>
       <div class="val">
         {%- if f.value_text in ('true', 'false') -%}
@@ -51,7 +54,9 @@
   {% if source.last_error %}<p class="status-error mono" style="font-size:0.8rem">{{ source.last_error }}</p>{% endif %}
   <div class="metric-grid">
     {% for m in metrics.get(source.id, []) %}
-    <div class="metric-card" data-metric-key="{{ m.metric_key }}">
+    <div class="metric-card has-history" data-source-id="{{ source.id }}"
+         data-metric-key="{{ m.metric_key }}" data-label="{{ m.metric_key }}"
+         title="Click for history">
       <div class="key">{{ m.metric_key }}</div>
       <div class="val">
         {%- if m.value_num is not none -%}
@@ -93,17 +98,135 @@
   </div>
   <p class="muted" style="font-size:0.8rem">Auto-refreshes every 15 s. Full history in the <a href="{{ url_for('main.action_log') }}">Action Log</a>.</p>
 </div>
+
+<!-- Value-history popover: opened by clicking any metric card -->
+<div id="history-modal" class="ws-modal-overlay" hidden>
+  <div class="ws-modal" role="dialog" aria-modal="true" aria-labelledby="hm-title">
+    <div class="ws-modal-head">
+      <div>
+        <div id="hm-title" class="ws-modal-title">History</div>
+        <div id="hm-sub" class="ws-modal-sub mono muted"></div>
+      </div>
+      <button type="button" class="ws-modal-close" aria-label="Close">×</button>
+    </div>
+    <div id="hm-body" class="ws-modal-body">
+      <p class="muted">Loading…</p>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-/* Light-touch auto-refresh: reload the page every 15 s unless a text field
-   has focus (there are none on this page, but be safe). */
-setInterval(() => {
-  if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
-  fetch('{{ url_for("api.dashboard") }}', {headers: {'Accept': 'application/json'}})
-    .then(r => { if (r.ok) location.reload(); })
-    .catch(() => {});
-}, 15000);
+(function () {
+  const HISTORY_DAYS = 3;
+  const modal = document.getElementById('history-modal');
+  const titleEl = document.getElementById('hm-title');
+  const subEl = document.getElementById('hm-sub');
+  const bodyEl = document.getElementById('hm-body');
+
+  const modalOpen = () => !modal.hidden;
+
+  function fmtValue(num, text, unit) {
+    if (text === 'true' || text === 'false') return text === 'true' ? 'yes' : 'no';
+    if (num !== null && num !== undefined) {
+      const rounded = Math.round(num * 10) / 10;
+      return (Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1))
+             + (unit ? ' ' + unit : '');
+    }
+    return (text === null || text === undefined || text === '') ? '—' : text;
+  }
+
+  function sparkline(changes) {
+    const pts = changes.filter(c => c.value_num !== null && c.value_num !== undefined);
+    if (pts.length < 2) return '';
+    const W = 520, H = 90, pad = 4;
+    const xs = pts.map(c => Date.parse(c.at));
+    const ys = pts.map(c => c.value_num);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const xspan = (x1 - x0) || 1, yspan = (y1 - y0) || 1;
+    const px = t => pad + (t - x0) / xspan * (W - 2 * pad);
+    const py = v => H - pad - (v - y0) / yspan * (H - 2 * pad);
+    // Step line — values hold until the next change, which is how the feed behaves.
+    let d = `M ${px(xs[0]).toFixed(1)} ${py(ys[0]).toFixed(1)}`;
+    for (let i = 1; i < pts.length; i++) {
+      d += ` L ${px(xs[i]).toFixed(1)} ${py(ys[i - 1]).toFixed(1)}`
+         + ` L ${px(xs[i]).toFixed(1)} ${py(ys[i]).toFixed(1)}`;
+    }
+    d += ` L ${px(x1).toFixed(1)} ${py(ys[ys.length - 1]).toFixed(1)}`;
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="value trend">`
+         + `<path d="${d}" fill="none" /></svg>`;
+  }
+
+  function render(data) {
+    const unit = data.unit || '';
+    const summary = [];
+    summary.push(`${data.change_count} change${data.change_count === 1 ? '' : 's'}`);
+    summary.push(`${data.poll_count} poll${data.poll_count === 1 ? '' : 's'}`);
+    if (data.min !== null && data.max !== null) {
+      summary.push(`min ${fmtValue(data.min, null, unit)}`);
+      summary.push(`max ${fmtValue(data.max, null, unit)}`);
+    }
+    let html = `<p class="hm-summary muted">Past ${data.days} day${data.days === 1 ? '' : 's'} · ${summary.join(' · ')}</p>`;
+    if (data.capped) {
+      html += `<p class="hm-summary muted">(showing the most recent ${data.poll_count} readings)</p>`;
+    }
+
+    if (!data.change_count) {
+      html += `<p class="muted">No readings recorded in this window yet.</p>`;
+      bodyEl.innerHTML = html;
+      return;
+    }
+
+    html += sparkline(data.changes);
+
+    // Newest change first in the table.
+    const rows = data.changes.slice().reverse().map(c =>
+      `<tr><td class="mono">${c.at_display || '—'}</td>`
+      + `<td class="num">${fmtValue(c.value_num, c.value_text, unit)}</td></tr>`
+    ).join('');
+    html += `<div class="table-wrap hm-table"><table>`
+          + `<thead><tr><th>When changed</th><th>Value</th></tr></thead>`
+          + `<tbody>${rows}</tbody></table></div>`;
+    bodyEl.innerHTML = html;
+  }
+
+  function open(card) {
+    const sourceId = card.dataset.sourceId;
+    const metricKey = card.dataset.metricKey;
+    const label = card.dataset.label || metricKey;
+    if (!sourceId || !metricKey) return;
+    titleEl.textContent = label;
+    subEl.textContent = metricKey;
+    bodyEl.innerHTML = '<p class="muted">Loading…</p>';
+    modal.hidden = false;
+
+    const qs = new URLSearchParams({source_id: sourceId, metric_key: metricKey, days: HISTORY_DAYS});
+    fetch('{{ url_for("api.history") }}?' + qs.toString(), {headers: {'Accept': 'application/json'}})
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(render)
+      .catch(() => { bodyEl.innerHTML = '<p class="status-error">Could not load history.</p>'; });
+  }
+
+  function close() { modal.hidden = true; }
+
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.metric-card.has-history');
+    if (card) { open(card); return; }
+    if (e.target.closest('.ws-modal-close') || e.target === modal) close();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalOpen()) close(); });
+
+  /* Light-touch auto-refresh: reload every 15 s, but never while the history
+     popover is open or a form field has focus. */
+  setInterval(() => {
+    if (modalOpen()) return;
+    if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+    fetch('{{ url_for("api.dashboard") }}', {headers: {'Accept': 'application/json'}})
+      .then(r => { if (r.ok) location.reload(); })
+      .catch(() => {});
+  }, 15000);
+})();
 </script>
 {% endblock %}

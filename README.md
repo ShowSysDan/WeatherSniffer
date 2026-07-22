@@ -1,6 +1,6 @@
 # WeatherSniffer
 
-**Current version: 0.7.0**
+**Current version: 0.8.0**
 
 WeatherSniffer polls **Perry Weather** public widget/client endpoints (keyed by
 GUIDs — no authentication required), normalizes each response into flat
@@ -297,7 +297,7 @@ state so behavior after a change is predictable.
 
 | page | what it does |
 |---|---|
-| `/` | Dashboard: **master weather readout** (one canonical value per field, deduped across sources), then current metrics grouped by source, poll status, recent fires; auto-refreshes every 15 s |
+| `/` | Dashboard: **master weather readout** (one canonical value per field, deduped across sources), then current metrics grouped by source, poll status, recent fires; auto-refreshes every 15 s. **Click any metric card** for a popover of that metric's value changes over the past 3 days (sparkline + change table) |
 | `/sources` | List sources (all users); add / edit / enable / disable / delete and **Test fetch** are **admin-only** (poll intervals live here) |
 | `/rules` | List / add / edit / enable / disable / delete rules; metric dropdown from discovered metrics; **Test fire** |
 | `/log` | Action log: filterable (rule, outcome), CSV export |
@@ -315,6 +315,9 @@ Dark and responsive, like the rest of the family.
 ### Internal API (session-gated, used by the UI)
 
 - `GET  /api/dashboard` — sources + current metrics + recent fires
+- `GET  /api/history?source_id=&metric_key=&days=` — one metric's value
+  changes over the past N days (default 3, max 30); powers the click-a-card
+  history popover
 - `POST /api/sources/test_fetch` — body `{"id": 1}` (saved source: full poll)
   or `{"source_type","guid","url","slug"}` (preview probe)
 - `GET  /api/sources/<id>/metric_keys` — discovered keys for the rule editor
