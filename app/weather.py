@@ -107,6 +107,7 @@ def build_master_readout(db):
                 'unit': m.unit,
                 'metric_key': m.metric_key,
                 'source': source.name,
+                'source_id': source.id,
                 'source_slug': source.slug,
                 'observed_at': _as_utc(m.observed_at),
                 'age_seconds': round(age, 1),
